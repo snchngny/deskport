@@ -110,7 +110,11 @@ if [ "$DESKPORT_LEGACY_MACOS" = 1 ]; then
         cp -L "$DESKPORT_OPENSSL_ROOT/lib/$library" "$host_app/Contents/Frameworks/$library"
     done
 fi
-python3 scripts/fix-macos-dependencies.py "$host_app"
+if [ "$DESKPORT_LEGACY_MACOS" = 1 ]; then
+    DESKPORT_DEPENDENCY_LIBRARY_PATH="$DESKPORT_OPENSSL_ROOT/lib" python3 scripts/fix-macos-dependencies.py "$host_app"
+else
+    python3 scripts/fix-macos-dependencies.py "$host_app"
+fi
 find "$host_app/Contents/Frameworks" -type f -name '*.dylib' -exec codesign --force --sign - {} \;
 cp host/macos/patches/libvirtualhid-target-display.patch host/macos/patches/libvirtualhid-smooth-drag.patch host/macos/patches/libvirtualhid-paced-scroll.patch host/macos/patches/sunshine-capture-timeout.patch host/macos/patches/sunshine-pkgconfig-link.patch "$host_app/Contents/Resources/"
 cp host/macos/patches/sunshine-smart-streaming.patch host/macos/patches/sunshine-screen-capture-kit.patch "$host_app/Contents/Resources/"

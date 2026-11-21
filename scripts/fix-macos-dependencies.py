@@ -132,6 +132,14 @@ def resolve(dep, binary):
             candidate = Path(qt_library_path) / suffix
             if candidate.is_file():
                 candidates.add(candidate.resolve())
+        # The native legacy host prefix has @rpath dylibs whose build-time
+        # rpath may be absent from Sunshine.app. Use its explicitly verified
+        # link prefix only after the original loader context failed.
+        library_path = os.environ.get('DESKPORT_DEPENDENCY_LIBRARY_PATH')
+        if not candidates and library_path and '/' not in suffix and suffix.endswith('.dylib'):
+            candidate = Path(library_path) / suffix
+            if candidate.is_file():
+                candidates.add(candidate.resolve())
         if len(candidates) == 1:
             return candidates.pop()
         if len(candidates) > 1:

@@ -49,6 +49,26 @@ class LegacyMacTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, 'Cannot resolve'):
                     namespace['resolve']('@rpath/' + suffix, root / 'plugin.dylib')
 
+    def test_host_rpath_uses_verified_prefix_without_overriding_loader(self):
+        tree = ast.parse((ROOT / 'scripts/fix-macos-dependencies.py').read_text())
+        function = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'resolve')
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            prefix = root / 'verified/lib'
+            prefix.mkdir(parents=True)
+            dependency = prefix / 'libdatachannel.0.dylib'
+            dependency.write_bytes(b'linked-library')
+            namespace = dict(Path=Path, os=os, origins={}, app=root / 'DeskPort.app',
+                             frameworks=root / 'Frameworks', loader_rpaths=lambda unused: [])
+            exec(compile(ast.Module(body=[function], type_ignores=[]), '<production-resolver>', 'exec'), namespace)
+            with patch.dict(os.environ, {'DESKPORT_DEPENDENCY_LIBRARY_PATH': str(prefix)}):
+                self.assertEqual(namespace['resolve']('@rpath/' + dependency.name, root / 'Sunshine'), dependency.resolve())
+                original = root / 'original'
+                original.mkdir()
+                (original / dependency.name).write_bytes(b'original-loader-library')
+                namespace['loader_rpaths'] = lambda unused: [str(original)]
+                self.assertEqual(namespace['resolve']('@rpath/' + dependency.name, root / 'Sunshine'), (original / dependency.name).resolve())
+
     def test_native_big_sur_and_wrong_architecture(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'program'
