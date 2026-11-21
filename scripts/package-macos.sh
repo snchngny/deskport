@@ -100,6 +100,16 @@ if hashlib.sha256(archive.read_bytes()).hexdigest() != manifest['sha256']:
 with tarfile.open(archive) as resources:
     resources.extractall(sys.argv[2], filter='data')
 ASSETS
+if [ "$DESKPORT_LEGACY_MACOS" = 1 ]; then
+    # The verified Moonlight OpenSSL binaries use Frameworks-relative install
+    # names. Sunshine's linker preserves those names, so seed its own bundle
+    # from the exact prefix used at link time before dependency relocation.
+    : "${DESKPORT_OPENSSL_ROOT:?Missing verified Intel OpenSSL prefix}"
+    mkdir -p "$host_app/Contents/Frameworks"
+    for library in libssl.3.dylib libcrypto.3.dylib; do
+        cp -L "$DESKPORT_OPENSSL_ROOT/lib/$library" "$host_app/Contents/Frameworks/$library"
+    done
+fi
 python3 scripts/fix-macos-dependencies.py "$host_app"
 find "$host_app/Contents/Frameworks" -type f -name '*.dylib' -exec codesign --force --sign - {} \;
 cp host/macos/patches/libvirtualhid-target-display.patch host/macos/patches/libvirtualhid-smooth-drag.patch host/macos/patches/libvirtualhid-paced-scroll.patch host/macos/patches/sunshine-capture-timeout.patch host/macos/patches/sunshine-pkgconfig-link.patch "$host_app/Contents/Resources/"
