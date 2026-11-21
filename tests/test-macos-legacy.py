@@ -95,6 +95,13 @@ class LegacyMacTests(unittest.TestCase):
                 logging = source / 'src/logging.h'
                 logging.parent.mkdir(parents=True)
                 logging.write_bytes(archive.extractfile('src/logging.h').read())
+                display_sources = []
+                for name in ('common/types.cpp', 'common/logging.cpp', 'macos/mac_api_layer.cpp'):
+                    relative = 'third-party/libdisplaydevice/src/' + name
+                    display = source / relative
+                    display.parent.mkdir(parents=True, exist_ok=True)
+                    display.write_bytes(archive.extractfile(relative).read())
+                    display_sources.append(display)
                 opus_module = source / 'cmake/dependencies/FindOpus.cmake'
                 opus_module.parent.mkdir(parents=True)
                 opus_module.write_bytes(archive.extractfile('cmake/dependencies/FindOpus.cmake').read())
@@ -109,6 +116,10 @@ class LegacyMacTests(unittest.TestCase):
             self.assertIn('-fno-objc-arc', first)
             self.assertIn('fmt::format', logging.read_text())
             self.assertNotIn('std::format', logging.read_text())
+            for display in display_sources:
+                self.assertNotIn('#include <format>', display.read_text())
+                self.assertNotIn('std::format', display.read_text())
+                self.assertIn('fmt::', display.read_text())
             overlay.apply(source, ROOT)
             self.assertEqual(target.read_text(), first)
             self.assertEqual((source / 'CMakeLists.txt').read_text().count('# DeskPort Big Sur format runtime'), 1)

@@ -51,7 +51,8 @@ endif()
             opus.write_text(text.replace(anchor, compatibility + anchor), encoding='utf-8')
     # Apple's std::format runtime requires newer macOS. fmt supplies the same
     # formatting operations without introducing a newer system-library ABI.
-    for path in (source / 'src').rglob('*'):
+    format_roots = (source / 'src', source / 'third-party/libdisplaydevice/src')
+    for path in (path for root in format_roots for path in root.rglob('*')):
         if not path.is_file() or path.suffix not in ('.h', '.hpp', '.cpp', '.mm'):
             continue
         text = path.read_text(encoding='utf-8')
@@ -66,6 +67,10 @@ endif()
         if marker not in text:
             cmake.write_text(text + '\n' + marker + '\nfind_package(fmt CONFIG REQUIRED)\ntarget_link_libraries(sunshine fmt::fmt-header-only)\n', encoding='utf-8')
         text = cmake.read_text(encoding='utf-8')
+        marker = '# DeskPort Big Sur display-device format runtime'
+        if marker not in text:
+            text += '\n' + marker + '\nforeach(component libdisplaydevice_common libdisplaydevice_macos)\n    if(TARGET ${component})\n        target_link_libraries(${component} PRIVATE fmt::fmt-header-only)\n    endif()\nendforeach()\n'
+            cmake.write_text(text, encoding='utf-8')
         marker = '# DeskPort host FFmpeg header priority'
         if marker not in text:
             text += '''
