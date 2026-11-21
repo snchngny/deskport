@@ -1,5 +1,22 @@
 # Bundled components
 
+## Intel Big Sur compatibility dependencies
+
+The Intel compatibility package retains the pinned Moonlight macOS OpenSSL and
+Opus binaries and rebuilds the host media/transport dependencies for macOS 11.7.
+`scripts/build-macos-legacy-deps.py` reuses the checksummed FFmpeg, x264 and
+miniupnpc source inputs from `winbuild/inputs.json`, and the existing pinned
+libdatachannel recipe. Their original component licenses remain applicable.
+
+The legacy host also uses the MIT-licensed fmt 11.2.0 implementation from commit
+`40626af88bd7df9a5fb80be7b25ac85b122d6c21` instead of Apple's newer `std::format`
+runtime. Its source archive SHA-256 is
+`992216a0605e03f0373984ecad11158f42d8569782f1b2c84035272da10f0ff1`.
+Component license files are bundled under `legacy-component-notices`.
+Source: https://github.com/fmtlib/fmt/tree/40626af88bd7df9a5fb80be7b25ac85b122d6c21
+
+## Original components
+
 DeskPort is an independent derivative of Moonlight Qt, initially v6.1.0, under
 GPL-3.0-or-later. Source and modifications: https://github.com/keithxc/deskport
 Upstream: https://github.com/moonlight-stream/moonlight-qt/tree/v6.1.0

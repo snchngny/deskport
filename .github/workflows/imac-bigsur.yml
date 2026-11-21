@@ -2,12 +2,23 @@ name: Intel Big Sur compatibility
 
 on:
   workflow_dispatch:
+    inputs:
+      mode:
+        type: choice
+        options: [full, client]
+        default: full
+        description: Full package or isolated client checkpoint
+      release_tag:
+        description: Existing draft release tag
+        default: v2.9.0-imac.1
+        required: true
 
 permissions:
   contents: read
 
 jobs:
   client:
+    if: inputs.mode == 'client'
     runs-on: macos-15-intel
     timeout-minutes: 45
     env:
@@ -54,3 +65,52 @@ jobs:
             ${{ runner.temp }}/macos-target.json
             ${{ runner.temp }}/deskport-client/app/BUILD-SCOPE.txt
           retention-days: 7
+  full-package:
+    if: inputs.mode == 'full'
+    runs-on: macos-15-intel
+    timeout-minutes: 240
+    permissions:
+      contents: write
+    env:
+      MACOSX_DEPLOYMENT_TARGET: '11.7'
+      DESKPORT_MACOS_PROFILE: intel-bigsur
+      DESKPORT_MACOS_ARCH: x86_64
+      DESKPORT_SIGN_IDENTITY: '-'
+      DESKPORT_ALLOW_ADHOC: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: Install native build tools and compatible Qt
+        run: |
+          brew install cmake ninja pkgconf nasm
+          python3 -m venv "$RUNNER_TEMP/qt-installer"
+          "$RUNNER_TEMP/qt-installer/bin/pip" install aqtinstall==3.3.0
+          "$RUNNER_TEMP/qt-installer/bin/python" -m aqt install-qt mac desktop 6.5.3 clang_64 --outputdir "$RUNNER_TEMP/qt"
+          echo "DESKPORT_QT_BIN=$RUNNER_TEMP/qt/6.5.3/macos/bin" >> "$GITHUB_ENV"
+          echo "DESKPORT_QT_LIBRARY_PATH=$RUNNER_TEMP/qt/6.5.3/macos/lib" >> "$GITHUB_ENV"
+          echo "DESKPORT_LEGACY_DEPS_ROOT=$RUNNER_TEMP/deskport-build/dependencies.noindex/macos-intel-bigsur" >> "$GITHUB_ENV"
+      - uses: actions/cache/restore@5a3ec84eff668545956fd18022155c47e93e2684
+        id: dependencies
+        with:
+          path: ${{ runner.temp }}/deskport-build/dependencies.noindex/macos-intel-bigsur
+          key: macos-intel-bigsur-v1-${{ hashFiles('scripts/build-macos-legacy-deps.py', 'scripts/build-linux-libdatachannel.sh', 'winbuild/inputs.json', 'host/vendor/sunshine.json') }}
+      - name: Build or verify pinned Intel dependencies
+        run: DESKPORT_BUILD_ROOT="$RUNNER_TEMP/deskport-build" bash scripts/build.sh dependencies --target macos --run deps-${{ github.run_id }} --min-free-gib 5
+      - uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684
+        if: steps.dependencies.outputs.cache-hit != 'true'
+        with:
+          path: ${{ runner.temp }}/deskport-build/dependencies.noindex/macos-intel-bigsur
+          key: ${{ steps.dependencies.outputs.cache-primary-key }}
+      - name: Build and audit full Intel Big Sur package
+        run: DESKPORT_BUILD_ROOT="$RUNNER_TEMP/deskport-build" bash scripts/build.sh package --target macos --run gha-${{ github.run_id }} --min-free-gib 5 --asset-suffix intel-bigsur
+      - name: Stage development candidate in draft only
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DESKPORT_RELEASE_TAG: ${{ inputs.release_tag }}
+        run: python3 scripts/stage-draft-release.py --target macos --tag "$DESKPORT_RELEASE_TAG" --root "$RUNNER_TEMP/deskport-build" --repo "$GITHUB_REPOSITORY"
+      - name: Show sanitized build errors
+        if: failure()
+        run: python3 scripts/export-build-errors.py "$RUNNER_TEMP/deskport-build"

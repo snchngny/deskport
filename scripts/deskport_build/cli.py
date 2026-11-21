@@ -25,7 +25,7 @@ from .runs import freeze, locked, read_record
 def main(argv=None):
     os.umask(0o077)
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("paths", "doctor", "build", "package", "notarize", "publish", "verify-upload", "clean", "cache"))
+    parser.add_argument("command", choices=("paths", "doctor", "dependencies", "build", "package", "notarize", "publish", "verify-upload", "clean", "cache"))
     parser.add_argument("--target", choices=TARGETS, required=True)
     parser.add_argument("--run", help="Unique run ID; generated for build/package, required for existing runs")
     parser.add_argument("--distribution", action="store_true", help="macOS Developer ID and notarization")
@@ -78,7 +78,9 @@ def main(argv=None):
                           "note": "Retained library inputs and compiled dependencies; legacy caches are not moved or deleted."}, indent=2))
         return 0
     with locked(paths, args.target):
-        if args.command in {"build", "package"}:
+        if args.command == 'dependencies':
+            package.build_dependencies(args, paths, env)
+        elif args.command in {"build", "package"}:
             build(args, paths, env)
         else:
             record = read_record(paths, args)

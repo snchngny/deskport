@@ -113,6 +113,9 @@ codesign --force --sign "$DESKPORT_SIGN_IDENTITY" --timestamp=none --options run
 codesign --force --sign "$DESKPORT_SIGN_IDENTITY" --timestamp=none --options runtime "$app/Contents/Helpers/deskport-recovery"
 cp LICENSE "$app/Contents/Resources/DeskPort-LICENSE"
 cp docs/BUNDLED_COMPONENTS.md "$app/Contents/Resources/"
+if [ "$DESKPORT_LEGACY_MACOS" = 1 ]; then
+    ditto "${DESKPORT_CMAKE_PREFIX_PATH:?}/share/deskport-legacy-notices" "$app/Contents/Resources/legacy-component-notices"
+fi
 codesign --force --sign "$DESKPORT_SIGN_IDENTITY" --timestamp=none "$app/Contents/Helpers/deskport-display"
 codesign --force --sign "$DESKPORT_SIGN_IDENTITY" --timestamp=none \
     --options runtime --entitlements host/macos/entitlements.plist "$app"

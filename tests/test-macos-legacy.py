@@ -90,6 +90,10 @@ class LegacyMacTests(unittest.TestCase):
             target.parent.mkdir(parents=True)
             with tarfile.open(ROOT / 'host/vendor/sunshine.tar.gz') as archive:
                 target.write_bytes(archive.extractfile('cmake/compile_definitions/macos.cmake').read())
+                (source / 'CMakeLists.txt').write_bytes(archive.extractfile('CMakeLists.txt').read())
+                logging = source / 'src/logging.h'
+                logging.parent.mkdir(parents=True)
+                logging.write_bytes(archive.extractfile('src/logging.h').read())
             patch = ROOT / 'host/macos/patches/sunshine-screen-capture-kit.patch'
             patched = subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--include=cmake/compile_definitions/macos.cmake', '-'], input=patch.read_text().encode(), cwd=source, capture_output=True)
             self.assertEqual(patched.returncode, 0, patched.stderr.decode())
@@ -99,8 +103,11 @@ class LegacyMacTests(unittest.TestCase):
             self.assertNotIn('/color-conversion.m', first)
             self.assertIn('/legacy-screen-video.m', first)
             self.assertIn('-fno-objc-arc', first)
+            self.assertIn('fmt::format', logging.read_text())
+            self.assertNotIn('std::format', logging.read_text())
             overlay.apply(source, ROOT)
             self.assertEqual(target.read_text(), first)
+            self.assertEqual((source / 'CMakeLists.txt').read_text().count('# DeskPort Big Sur format runtime'), 1)
             self.assertTrue((source / 'src/deskport/macos/legacy-screen-video.m').is_file())
 
 

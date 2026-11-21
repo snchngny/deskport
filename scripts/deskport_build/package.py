@@ -113,15 +113,18 @@ def nix_output(stdout_path):
 
 def host_check(target):
     if target == "macos":
-        if platform.system() != "Darwin" or platform.machine() != "arm64":
-            raise Refused("macOS packaging requires an Apple Silicon Mac")
+        expected = "x86_64" if os.environ.get("DESKPORT_MACOS_PROFILE") == "intel-bigsur" else "arm64"
+        if platform.system() != "Darwin" or platform.machine() != expected:
+            raise Refused("macOS packaging requires a native " + expected + " Mac")
     elif platform.system() != "Linux" or platform.machine() != "x86_64":
         raise Refused("Run Linux/Windows x86_64 builds on the Linux build host")
 
 
 def tool_check(target, cleanup=False):
     required = ["git", "bash", "ps"]
-    required += ["podman"] if target == "linux-portable" else ["nix-shell" if target == "windows" else "nix"]
+    legacy = target == "macos" and os.environ.get("DESKPORT_MACOS_PROFILE") == "intel-bigsur"
+    required += (["cmake", "ninja", "pkg-config", "make", "xcrun"] if legacy else
+                 ["podman"] if target == "linux-portable" else ["nix-shell" if target == "windows" else "nix"])
     missing = [name for name in required if not shutil.which(name)]
     if cleanup and not (shutil.which("lsof") or Path("/usr/sbin/lsof").is_file()):
         missing.append("lsof (run cleanup inside nix develop on Linux)")
@@ -169,6 +172,23 @@ def finish_package(args, paths, env, record):
     record.update(assets=assets, source_unchanged=True, failed=False)
 
 
+def legacy_dependency_root(paths, env):
+    root = Path(env.get('DESKPORT_LEGACY_DEPS_ROOT', paths['cache'] / 'intel-bigsur')).absolute()
+    return runs.build_storage.output(root)
+
+
+def build_dependencies(args, paths, env):
+    if args.target != 'macos' or env.get('DESKPORT_MACOS_PROFILE') != 'intel-bigsur':
+        raise Refused('The dependencies command is scoped to Intel Big Sur')
+    host_check(args.target)
+    tool_check(args.target)
+    runs.capacity(paths, args)
+    common.privacy()
+    root = legacy_dependency_root(paths, env)
+    run_logged([sys.executable, 'scripts/build-macos-legacy-deps.py', '--root', root,
+                '--jobs', env.get('DESKPORT_JOBS', '3')], paths, env, 'dependencies')
+
+
 def build(args, paths, env):
     suffix = asset_suffix(getattr(args, "asset_suffix", None))
     host_check(args.target)
@@ -204,7 +224,17 @@ def build(args, paths, env):
     write_json(paths["record"] / "run.json", record)
     try:
         if args.target == "macos":
-            command = ["nix", "develop", "-c", "bash", "scripts/package-macos.sh"]
+            if env.get("DESKPORT_MACOS_PROFILE") == "intel-bigsur":
+                prefix = legacy_dependency_root(paths, env) / 'prefix'
+                if not (prefix.parent / 'ready.json').is_file():
+                    raise Refused('Build the Intel dependencies before packaging')
+                env.update(DESKPORT_NIX_DEPS='0', DESKPORT_CMAKE_PREFIX_PATH=str(prefix),
+                           DESKPORT_OPENSSL_ROOT=str(prefix), DESKPORT_OPUS_ROOT=str(prefix),
+                           DESKPORT_FFMPEG_ROOT=str(prefix / 'ffmpeg'),
+                           PKG_CONFIG_PATH=str(prefix / 'lib/pkgconfig'))
+                command = ["bash", "scripts/package-macos.sh"]
+            else:
+                command = ["nix", "develop", "-c", "bash", "scripts/package-macos.sh"]
         elif args.target == "linux-nix":
             command = ["nix", "build", "-L", "--cores", "4", "--max-jobs", "1", "--no-link", "--print-out-paths"]
         elif args.target == "linux-portable":

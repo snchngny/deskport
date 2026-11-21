@@ -25,6 +25,22 @@ def apply(source, repo):
     target = source / 'src/deskport/macos/legacy-screen-video.m'
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(repo / 'host/macos/legacy-screen-video.m', target)
+    # Apple's std::format runtime requires newer macOS. fmt supplies the same
+    # formatting operations without introducing a newer system-library ABI.
+    for path in (source / 'src').rglob('*'):
+        if not path.is_file() or path.suffix not in ('.h', '.hpp', '.cpp', '.mm'):
+            continue
+        text = path.read_text(encoding='utf-8')
+        updated = text.replace('#include <format>', '#include <fmt/format.h>\n#include <fmt/std.h>\n#include <fmt/chrono.h>\n#include <fmt/xchar.h>')
+        updated = updated.replace('std::format', 'fmt::format')
+        if updated != text:
+            path.write_text(updated, encoding='utf-8')
+    cmake = source / 'CMakeLists.txt'
+    if cmake.is_file():
+        text = cmake.read_text(encoding='utf-8')
+        marker = '# DeskPort Big Sur format runtime'
+        if marker not in text:
+            cmake.write_text(text + '\n' + marker + '\nfind_package(fmt CONFIG REQUIRED)\ntarget_link_libraries(sunshine fmt::fmt-header-only)\n', encoding='utf-8')
 
 
 if __name__ == '__main__':
