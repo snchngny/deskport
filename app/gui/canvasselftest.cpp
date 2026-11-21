@@ -40,7 +40,11 @@ int runCanvasSelfTest(int argc, char** argv) {
 #endif
     QQuickWindow window;
 #ifdef Q_OS_MACOS
+#if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
     window.setFlags(Qt::Window | Qt::ExpandedClientAreaHint | Qt::NoTitleBarBackgroundHint);
+#else
+    window.setFlags(Qt::Window);
+#endif
     MacTitleBar titleBar;
     titleBar.attach(&window);
 #endif

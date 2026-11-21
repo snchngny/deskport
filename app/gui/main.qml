@@ -26,7 +26,9 @@ ApplicationWindow {
     title: "DeskPort"
     // macOS: one top bar. The content extends under the title bar and the window
     // buttons sit at the left of DeskPort's own top bar (see mactitlebar.mm).
-    readonly property bool unifiedTitleBar: Qt.platform.os === "osx"
+    readonly property bool unifiedTitleBar: Qt.platform.os === "osx" &&
+        typeof Qt.ExpandedClientAreaHint !== "undefined" &&
+        typeof Qt.NoTitleBarBackgroundHint !== "undefined"
     // Right edge of the zoom button in points; MacTitleBar sets the real value.
     property real windowButtonsEnd: 79
     // Keep Wayland decorations stable across Devices/canvas transitions: some
