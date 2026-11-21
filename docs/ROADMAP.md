@@ -1,3 +1,10 @@
+## Compatibility fork checkpoint — 2026-11-22
+
+- Implemented, awaiting native build/runtime acceptance: explicit host-side display selection without physical layout changes, Intel Big Sur qmake/package profile, AVFoundation capture adapter, guarded modern macOS service calls, and a Mach-O deployment-target gate.
+- CI: Intel client compilation on macOS 15 x86_64 with Qt 6.5.3; independent full Windows and Apple Silicon candidates. Build output staging is restricted to an existing draft release.
+- Pending: a complete Intel Big Sur host dependency build and package, all three platform build results, real-machine display/input checks, and final distribution status. Compilation is not low-latency acceptance.
+- Excluded: display stitching. No existing credentials, installed applications, or display calibration are migrated automatically.
+
 ## Mouse latency optimization — 2026-11-21
 
 Batch 1 (implemented):

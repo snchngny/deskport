@@ -49,6 +49,15 @@ class CurrentOtherHost(Helper):
 
 
 class StorageTests(unittest.TestCase):
+    def test_portable_environment_is_stable_after_exported_tmpdir(self):
+        with patch.object(build_storage, 'shared_helper', return_value=None), patch.object(build_storage, 'on_mm4', return_value=False):
+            first = build_storage.Storage().environment()
+            with patch.dict(os.environ, first), patch('tempfile.gettempdir', return_value='/a/different/nested/tmp'):
+                second = build_storage.Storage().environment()
+            self.assertEqual(first['TMPDIR'], second['TMPDIR'])
+            self.assertEqual(first['MYGIT_CACHE_DIR'], second['MYGIT_CACHE_DIR'])
+            self.assertEqual(first['CLANG_MODULE_CACHE_PATH'], second['CLANG_MODULE_CACHE_PATH'])
+
     def setUp(self):
         self.root = Path('/Volumes/mm4_2t/data/mygit-build/storage-test-no-write')
         self.env = {k: v for k, v in os.environ.items() if not k.startswith(('DESKPORT_', 'MYGIT_', 'CCACHE_', 'SCCACHE_', 'CARGO_'))}

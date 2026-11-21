@@ -318,7 +318,11 @@ GPL-3.0-or-later。[LICENSE](../../LICENSE)、保持されているソースの�
 - `host/macos/legacy-screen-video.m`：同梱SunshineのAVFoundation取得を再利用するSDR用アダプターです。Big SurではmacOS 13専用のバックグラウンド復旧サービスを呼びません
 - `scripts/check-macos-target.py`：同梱Mach-OのIntelスライスと最低OSを検査し、新しいOS専用ライブラリが混入した候補を拒否します。これは実機動作の証明ではありません
 
-GitHub Actionsの手動実行ワークフロー `Intel Big Sur compatibility` は `macos-15-intel` とQt 6.5.3で、最初にクライアントとMac用アダプターをコンパイルします。成果物は**クライアントのみの開発候補**で、署名は開発用、サーバーはまだ同梱しません。Actionsはソース公開やReleaseを行わず、成果物を7日間保持します。初回のクラウド実行は未実施です
+GitHub Actionsの手動実行ワークフロー `Intel Big Sur compatibility` は `macos-15-intel` とQt 6.5.3で、最初にクライアントとMac用アダプターをコンパイルします。まだサーバーは同梱せず、チェックレポートのみを7日間保持します。初回CIで判明したQt取得指定とQt 6.9専用ウィンドウフラグの問題は修正し、コンパイル確認を継続しています
+
+画面選択は「共有」画面に追加しました。共有を停止してから「仮想拡張画面」または接続済みディスプレイを選び、共有を再開します。接続済み画面の選択では、その画面を取得するだけで表示ヘルパーによる解像度・配置変更を行いません。既存の仮想画面も、Windowsが表示中であれば一覧から選ぶ方式です。受信側からの遠隔切替と実機動作は未検証です
+
+このフォークの公開先は [snchngny/deskport](https://github.com/snchngny/deskport) です。WindowsとApple Siliconの全体候補は `Desktop distribution candidates` からビルドし、検証済み生成物を既存の下書きReleaseへ保存します。下書き専用アップロードは、公開済みRelease・失敗したビルド・変更された生成物を拒否します。Developer ID署名・公証と、コンパイル成功や実機受入は別の確認項目です
 
 ローカルで事前検査する場合：
 

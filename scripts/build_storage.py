@@ -99,7 +99,8 @@ class Storage:
             # CI and Nix sandboxes often have a deliberately unwritable HOME.
             # Preserve the desktop project-root convention, but use the host's
             # existing temporary area for auxiliary caches when no helper exists.
-            portable = Path(tempfile.gettempdir()) / ('deskport-' + PROJECT)
+            portable = Path(os.environ.get('DESKPORT_PORTABLE_CACHE_ROOT') or
+                            str(Path(os.environ.get('RUNNER_TEMP') or tempfile.gettempdir()) / ('deskport-' + PROJECT)))
             self.paths.update({p: portable / p for p in ('work', 'cache', 'tests', 'logs', 'dist', 'sources', 'evidence', 'releases', 'rollback')})
 
     def validate(self, value, *, app=False, generated=False):
@@ -190,7 +191,12 @@ class Storage:
         identity = hashlib.sha256(str(p['platform']).encode()).hexdigest()[:10]
         label = {'deskport': 'dp', 'deskport-client': 'dc', 'deskport-core': 'core'}[PROJECT]
         tmp = (p['root'].parent / 's.noindex' / (label + '-' + identity) if self.helper
-               else Path(tempfile.gettempdir()) / ('s-' + label + '-' + identity))
+               else p['cache'].parent / ('s-' + label + '-' + identity))
+        if not self.helper:
+            # shell -> prepare -> compiler must agree even after TMPDIR is exported.
+            # Recomputing this base from the exported TMPDIR nests a new directory
+            # on every call and leaves the compiler pointing at a missing directory.
+            env['DESKPORT_PORTABLE_CACHE_ROOT'] = str(p['cache'].parent)
         env.update(TMPDIR=str(tmp), TMP=str(tmp), TEMP=str(tmp),
             PYTHONPYCACHEPREFIX=str(cache / 'pycache'), PYTHONDONTWRITEBYTECODE='1',
             CLANG_MODULE_CACHE_PATH=str(cache / 'clang-modules'),
