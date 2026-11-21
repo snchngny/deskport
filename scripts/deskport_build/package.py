@@ -185,6 +185,7 @@ def build_dependencies(args, paths, env):
     runs.capacity(paths, args)
     common.privacy()
     root = legacy_dependency_root(paths, env)
+    runs.build_storage.Storage(task=args.run, target=args.target).prepare(env)
     run_logged([sys.executable, 'scripts/build-macos-legacy-deps.py', '--root', root,
                 '--jobs', env.get('DESKPORT_JOBS', '3')], paths, env, 'dependencies')
 
