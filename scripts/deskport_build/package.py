@@ -161,7 +161,7 @@ def finish_package(args, paths, env, record):
     write_json(metadata, {"schema": SCHEMA, "version": version, "target": args.target,
                           "asset_suffix": suffix,
                           "source": state,
-                          "source_url": f"https://github.com/keithxc/deskport/tree/{state['revision']}",
+                          "source_url": f"https://github.com/{os.environ.get('GITHUB_REPOSITORY', 'keithxc/deskport')}/tree/{state['revision']}",
                           "assets": [{k: a[k] for k in ("name", "size", "sha256")} for a in assets]})
     assets.append(asset_info(paths, metadata))
     checksums.write_text("".join(f"{a['sha256']}  {a['name']}\n" for a in assets))

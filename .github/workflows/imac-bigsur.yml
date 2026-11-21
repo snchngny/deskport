@@ -28,7 +28,7 @@ jobs:
         run: |
           python3 -m venv "$RUNNER_TEMP/qt-installer"
           "$RUNNER_TEMP/qt-installer/bin/pip" install aqtinstall==3.3.0
-          "$RUNNER_TEMP/qt-installer/bin/python" -m aqt install-qt mac desktop 6.5.3 clang_64 --outputdir "$RUNNER_TEMP/qt" --modules qtsvg
+          "$RUNNER_TEMP/qt-installer/bin/python" -m aqt install-qt mac desktop 6.5.3 clang_64 --outputdir "$RUNNER_TEMP/qt"
       - name: Compile client and native adapters
         run: |
           mkdir -p "$RUNNER_TEMP/deskport-client"
@@ -50,7 +50,6 @@ jobs:
         with:
           name: intel-bigsur-client-candidate
           path: |
-            ${{ runner.temp }}/DeskPort-intel-bigsur-client-candidate.zip
             ${{ runner.temp }}/macos-target.json
             ${{ runner.temp }}/deskport-client/app/BUILD-SCOPE.txt
           retention-days: 7

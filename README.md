@@ -1,3 +1,12 @@
+> This is the independent DeskPort compatibility fork at
+> [snchngny/deskport](https://github.com/snchngny/deskport), based on
+> [keithxc/deskport](https://github.com/keithxc/deskport).
+> Windows x64, Apple Silicon and Intel Big Sur distribution candidates are in development.
+> Compilation, signing and real-machine acceptance are tracked separately.
+> See this fork's [Actions](https://github.com/snchngny/deskport/actions) and
+> [Releases](https://github.com/snchngny/deskport/releases); the upstream information below
+> describes the original project's packages.
+
 <p align="center">
   <img src="app/res/deskport.svg" alt="DeskPort" width="128" height="128">
 </p>

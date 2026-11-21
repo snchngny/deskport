@@ -1,0 +1,59 @@
+name: Desktop distribution candidates
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing draft release tag
+        required: true
+        default: v2.9.0-imac.1
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    permissions:
+      contents: write
+    env:
+      DESKPORT_BUILD_ROOT: ${{ runner.temp }}/deskport-build
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24
+      - name: Build and audit full Windows package
+        run: bash scripts/build.sh package --target windows --run gha-${{ github.run_id }} --min-free-gib 5
+      - name: Stage packages in draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DESKPORT_RELEASE_TAG: ${{ inputs.release_tag }}
+        run: python3 scripts/stage-draft-release.py --target windows --tag "$DESKPORT_RELEASE_TAG" --root "$DESKPORT_BUILD_ROOT" --repo "$GITHUB_REPOSITORY"
+  apple-silicon:
+    runs-on: macos-26
+    timeout-minutes: 180
+    permissions:
+      contents: write
+    env:
+      DESKPORT_BUILD_ROOT: ${{ runner.temp }}/deskport-build
+      DESKPORT_SIGN_IDENTITY: '-'
+      DESKPORT_ALLOW_ADHOC: '1'
+      DESKPORT_MACOS_PROFILE: modern
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24
+      - name: Build and audit full Apple Silicon candidate
+        run: bash scripts/build.sh package --target macos --run gha-${{ github.run_id }} --min-free-gib 5
+      - name: Stage development candidate in draft only
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DESKPORT_RELEASE_TAG: ${{ inputs.release_tag }}
+        run: python3 scripts/stage-draft-release.py --target macos --tag "$DESKPORT_RELEASE_TAG" --root "$DESKPORT_BUILD_ROOT" --repo "$GITHUB_REPOSITORY"
