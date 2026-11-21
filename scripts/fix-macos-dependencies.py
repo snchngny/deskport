@@ -10,6 +10,10 @@ import shutil
 import subprocess
 import sys
 
+target_arch = os.environ.get('DESKPORT_MACOS_ARCH', 'arm64')
+if target_arch not in ('arm64', 'x86_64'):
+    raise SystemExit('Invalid DESKPORT_MACOS_ARCH')
+
 app = Path(sys.argv[1]).resolve()
 frameworks = app / 'Contents/Frameworks'
 frameworks.mkdir(exist_ok=True)
@@ -84,7 +88,7 @@ def build_machine_iconv(path):
 
 def loader_rpaths(binary):
     commands = subprocess.check_output(
-        ['otool', '-arch', 'arm64', '-l', str(binary)], text=True).splitlines()
+        ['otool', '-arch', target_arch, '-l', str(binary)], text=True).splitlines()
     paths = []
     for index, line in enumerate(commands):
         if line.strip() == 'cmd LC_RPATH':
@@ -142,9 +146,9 @@ while True:
     for binary in pending:
         binary.chmod(binary.stat().st_mode | 0o200)
         identity = subprocess.check_output(
-            ['otool', '-arch', 'arm64', '-D', str(binary)], text=True).splitlines()
+            ['otool', '-arch', target_arch, '-D', str(binary)], text=True).splitlines()
         current_identity = identity[1].strip() if len(identity) > 1 else None
-        output = subprocess.check_output(['otool', '-arch', 'arm64', '-L', str(binary)], text=True)
+        output = subprocess.check_output(['otool', '-arch', target_arch, '-L', str(binary)], text=True)
         edits = []
         for line in output.splitlines()[1:]:
             dep = line.strip().split(' (')[0]
@@ -188,7 +192,7 @@ while True:
             desired_identity = '@rpath/' + str(binary.relative_to(frameworks))
             if identity[1].strip() != desired_identity:
                 edits.extend(['-id', desired_identity])
-        commands = subprocess.check_output(['otool', '-arch', 'arm64', '-l', str(binary)], text=True).splitlines()
+        commands = subprocess.check_output(['otool', '-arch', target_arch, '-l', str(binary)], text=True).splitlines()
         for index, line in enumerate(commands):
             if line.strip() == 'cmd LC_RPATH':
                 path = commands[index + 2].strip().removeprefix('path ').split(' (offset')[0]

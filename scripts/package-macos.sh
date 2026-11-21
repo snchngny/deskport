@@ -2,6 +2,7 @@
 # Build an arm64 application containing the viewer, host and virtual display.
 set -euo pipefail
 repo=$(cd "$(dirname "$0")/.." && pwd)
+source "$repo/scripts/macos-target.sh"
 cd "$repo"
 export DESKPORT_TARGET=macos
 source "$repo/scripts/build-paths.sh"
@@ -15,11 +16,16 @@ if [ "$DESKPORT_SIGN_IDENTITY" = - ] && [ "${DESKPORT_ALLOW_ADHOC:-0}" != 1 ]; t
     exit 1
 fi
 export DEVELOPER_DIR=${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}
-qt_bin=${DESKPORT_QT_BIN:-/opt/homebrew/bin}
+default_qt=/opt/homebrew/bin
+[ "$DESKPORT_MACOS_ARCH" != x86_64 ] || default_qt=/usr/local/bin
+qt_bin=${DESKPORT_QT_BIN:-$default_qt}
 # Checkout and dependency-provider paths keep qmake's SDK/tool caches isolated.
 build_dir=$DESKPORT_MACOS_BUILD_DIR
 dist_dir=$DESKPORT_MACOS_DIST_DIR
 qml_args=()
+if [ "$DESKPORT_LEGACY_MACOS" = 1 ]; then
+    qml_args+=("CONFIG+=imac_bigsur")
+fi
 if [ -n "${DESKPORT_QML_CACHEGEN:-}" ]; then
     qml_args+=("QT_TOOL.qmlcachegen.binary=$DESKPORT_QML_CACHEGEN")
 fi
@@ -42,15 +48,15 @@ rmdir "$probe_dir"
     cd "$build_dir"
     # Refresh subprojects too: app/Info.plist is generated during qmake.
     "$qt_bin/qmake" -r "$repo/moonlight-qt.pro" CONFIG+=release CONFIG-=debug_and_release \
-        QMAKE_APPLE_DEVICE_ARCHS=arm64 QMAKE_MACOSX_DEPLOYMENT_TARGET=26.0 \
+        QMAKE_APPLE_DEVICE_ARCHS="$DESKPORT_MACOS_ARCH" QMAKE_MACOSX_DEPLOYMENT_TARGET="$DESKPORT_MACOS_MIN" \
         QMAKE_CC=/usr/bin/clang QMAKE_CXX=/usr/bin/clang++ \
         "QMAKE_XCODE_DEVELOPER_PATH=$DEVELOPER_DIR" ${qml_args[@]+"${qml_args[@]}"}
     make -j"${DESKPORT_JOBS:-4}"
 )
 bash scripts/build-macos-host.sh
-xcrun clang -mmacosx-version-min=26.0 -fobjc-arc -framework Foundation -framework CoreGraphics -framework ApplicationServices -framework AppKit \
+xcrun clang -arch "$DESKPORT_MACOS_ARCH" -mmacosx-version-min="$DESKPORT_MACOS_MIN" -fobjc-arc -framework Foundation -framework CoreGraphics -framework ApplicationServices -framework AppKit \
     host/macos/display-helper.m -o "$build_dir/deskport-display"
-xcrun clang++ -std=c++17 -Wall -Wextra -Werror host/macos/recovery-helper.cpp -o "$build_dir/deskport-recovery"
+xcrun clang++ -arch "$DESKPORT_MACOS_ARCH" -mmacosx-version-min="$DESKPORT_MACOS_MIN" -std=c++17 -Wall -Wextra -Werror host/macos/recovery-helper.cpp -o "$build_dir/deskport-recovery"
 stage=$(mktemp -d "$dist_dir/.package.XXXXXX")
 zip_check=
 trap 'chmod -R u+w "$stage" 2>/dev/null || true; rm -rf "$stage"; if [ -n "${zip_check:-}" ]; then rm -rf "$zip_check"; fi' EXIT
@@ -113,15 +119,18 @@ codesign --force --sign "$DESKPORT_SIGN_IDENTITY" --timestamp=none \
 codesign --verify --deep --strict "$app"
 # Do not distribute a bundle with unresolved build-machine dependencies.
 python3 scripts/check-macos-bundle.py "$app"
+if [ "$DESKPORT_LEGACY_MACOS" = 1 ]; then
+    python3 scripts/check-macos-target.py "$app" --arch x86_64 --max-version 11.7.11
+fi
 rm -rf "$dist_dir/DeskPort.app"
 ditto "$app" "$dist_dir/DeskPort.app"
 ln -s /Applications "$stage/Applications"
-hdiutil create -volname DeskPort -srcfolder "$stage" -ov -format UDZO "$dist_dir/DeskPort-${version}-macos-arm64.dmg"
-shasum -a 256 "$dist_dir/DeskPort-${version}-macos-arm64.dmg"
+hdiutil create -volname DeskPort -srcfolder "$stage" -ov -format UDZO "$dist_dir/DeskPort-${version}-macos-${DESKPORT_MACOS_ARCH}.dmg"
+shasum -a 256 "$dist_dir/DeskPort-${version}-macos-${DESKPORT_MACOS_ARCH}.dmg"
 # Nix fetches this zip and extracts it with Info-ZIP unzip, which writes
 # AppleDouble entries as literal "._" files inside the sealed bundle. Store no
 # extended attributes, and verify the bundle the way Nix will unpack it.
-zip="$dist_dir/DeskPort-${version}-macos-arm64.zip"
+zip="$dist_dir/DeskPort-${version}-macos-${DESKPORT_MACOS_ARCH}.zip"
 rm -f "$zip"
 ditto -c -k --norsrc --noextattr --noacl --keepParent "$dist_dir/DeskPort.app" "$zip"
 zip_check=$(mktemp -d "$dist_dir/.zip-check.XXXXXX")

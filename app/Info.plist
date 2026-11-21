@@ -19,7 +19,7 @@
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>LSMinimumSystemVersion</key>
-	<string>26.0</string>
+	<string>MACOS_MIN_VERSION</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 	<!-- 常驻托盘服务：不占 Dock，入口只有状态栏那个图标。 -->

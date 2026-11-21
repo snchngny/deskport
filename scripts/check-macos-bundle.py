@@ -29,11 +29,15 @@ with (root / 'Contents/Info.plist').open('rb') as stream:
 if not info.get('NSMicrophoneUsageDescription', '').strip():
     errors.append('Outer app is missing its microphone usage description')
 resources = root / 'Contents/Resources'
+target_arch = os.environ.get('DESKPORT_MACOS_ARCH', 'arm64')
+legacy = os.environ.get('DESKPORT_MACOS_PROFILE') == 'intel-bigsur'
+if target_arch not in ('arm64', 'x86_64'):
+    raise SystemExit('Invalid DESKPORT_MACOS_ARCH')
 if info.get('CFBundleIconName') != 'AppIcon':
     errors.append('Outer app is missing its native AppIcon name')
 if info.get('CFBundleIconFile') != 'deskport.icns':
     errors.append('Outer app is missing its portable icon fallback')
-for icon in ('Assets.car', 'deskport.icns'):
+for icon in (('deskport.icns',) if legacy else ('Assets.car', 'deskport.icns')):
     if not (resources / icon).is_file() or not (resources / icon).stat().st_size:
         errors.append('Outer app is missing its icon resource: ' + icon)
 recovery = root / 'Contents/Library/LaunchDaemons/io.github.keithxc.DeskPort.Recovery.plist'
@@ -66,7 +70,7 @@ for path in root.rglob('*'):
     data = path.read_bytes()
     if b'/nix/store/' in data and (b'/share/i18n/csmapper' in data or b'/lib/i18n/' in data):
         errors.append(f'{path.relative_to(root)}: loads run-time converter data from the build machine')
-    output = subprocess.check_output(['/usr/bin/otool', '-arch', 'arm64', '-L', str(path)], text=True)
+    output = subprocess.check_output(['/usr/bin/otool', '-arch', target_arch, '-L', str(path)], text=True)
     for line in output.splitlines()[1:]:
         dependency = line.strip().split(' (')[0]
         if dependency.startswith(('/opt/homebrew/', '/usr/local/', '/nix/', '/Users/')):

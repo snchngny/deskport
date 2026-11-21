@@ -3,6 +3,11 @@ CONFIG += debug_and_release
 
 # Avoid noisy SDK version mismatch warnings on newer macOS SDKs
 macx: CONFIG += sdk_no_version_check
+macx:contains(CONFIG, imac_bigsur) {
+    QMAKE_APPLE_DEVICE_ARCHS = x86_64
+    QMAKE_MACOSX_DEPLOYMENT_TARGET = 11.7
+    DEFINES += DESKPORT_LEGACY_MACOS
+}
 
 # Ensure symbols are always generated
 CONFIG += force_debug_info

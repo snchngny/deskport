@@ -2,6 +2,9 @@
 # Build the pinned DeskPort host with virtual-display input routing.
 set -euo pipefail
 repo=$(cd "$(dirname "$0")/.." && pwd)
+source "$repo/scripts/macos-target.sh"
+brew_prefix=/opt/homebrew
+[ "$DESKPORT_MACOS_ARCH" != x86_64 ] || brew_prefix=/usr/local
 export DESKPORT_TARGET=macos
 source "$repo/scripts/build-paths.sh"
 source_dir=$(deskport_output_path "${DESKPORT_HOST_SOURCE_DIR:-$DESKPORT_MACOS_BUILD_DIR/sunshine-vendored-source}")
@@ -11,6 +14,9 @@ build_dir="$build_root/sunshine-vendored-build"
 python3 "$repo/scripts/prepare-host-source.py" "$source_dir"
 # Every DeskPort host change is listed, in order, in host/series.
 python3 "$repo/scripts/apply-host-patches.py" --platform macos "$source_dir"
+if [ "$DESKPORT_LEGACY_MACOS" = 1 ]; then
+    python3 "$repo/host/overlays/patch-host-legacy-macos.py" "$source_dir"
+fi
 if [ "${DESKPORT_HOST_PREPARE_ONLY:-0}" = 1 ]; then
     printf 'Prepared macOS host overlays: %s\n' "$source_dir"
     exit 0
@@ -29,12 +35,16 @@ PC
 if [ "${DESKPORT_NIX_DEPS:-0}" = 1 ]; then
     export PKG_CONFIG_PATH="$pc:${PKG_CONFIG_PATH:-}"
 else
-    export PKG_CONFIG_PATH="$pc:/opt/homebrew/lib/pkgconfig:/opt/homebrew/opt/openssl@3/lib/pkgconfig"
+    export PKG_CONFIG_PATH="$pc:$brew_prefix/lib/pkgconfig:$brew_prefix/opt/openssl@3/lib/pkgconfig"
 fi
 # The vendored Sunshine source is materialized without Git metadata, so its
 # upstream CMake fallback would otherwise download a mutable "latest" FFmpeg
 # archive. Keep the known-compatible macOS archive content-addressed instead.
 if [ -z "${DESKPORT_FFMPEG_ROOT:-}" ]; then
+    if [ "$DESKPORT_LEGACY_MACOS" = 1 ]; then
+        echo "Big Sur requires a separately built x86_64/macOS11.7 FFmpeg dependency prefix; the upstream arm64 archive cannot be reused." >&2
+        exit 2
+    fi
     ffmpeg_manifest="$repo/host/vendor/sunshine-macos-ffmpeg.json"
     ffmpeg_urls=$(python3 -c 'import json,sys; m=json.load(open(sys.argv[1])); print(m["url"]); print(m.get("mirror", ""))' "$ffmpeg_manifest")
     ffmpeg_sha256=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["sha256"])' "$ffmpeg_manifest")
@@ -88,10 +98,11 @@ fi
 export BUILD_VERSION=2026.906.222525 BRANCH=deskport
 cmake -S "$source_dir" -B "$build_dir" \
     -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=/usr/bin/clang -DCMAKE_CXX_COMPILER=/usr/bin/clang++ \
-    -DCMAKE_OSX_SYSROOT="$sdk" -DCMAKE_OSX_DEPLOYMENT_TARGET=26.0 \
+    -DCMAKE_OSX_SYSROOT="$sdk" -DCMAKE_OSX_DEPLOYMENT_TARGET="$DESKPORT_MACOS_MIN" \
+    -DCMAKE_OSX_ARCHITECTURES="$DESKPORT_MACOS_ARCH" \
     -DBUILD_DOCS=OFF -DBUILD_TESTS=OFF -DSUNSHINE_ENABLE_TRAY=OFF \
-    -DOPENSSL_ROOT_DIR="${DESKPORT_OPENSSL_ROOT:-/opt/homebrew/opt/openssl@3}" \
-    -DOpus_ROOT_DIR="${DESKPORT_OPUS_ROOT:-/opt/homebrew/opt/opus}" \
-    -DICU_ROOT="${DESKPORT_ICU_ROOT:-/opt/homebrew/opt/icu4c@78}" -DSUNSHINE_PUBLISHER_NAME=DeskPort \
+    -DOPENSSL_ROOT_DIR="${DESKPORT_OPENSSL_ROOT:-$brew_prefix/opt/openssl@3}" \
+    -DOpus_ROOT_DIR="${DESKPORT_OPUS_ROOT:-$brew_prefix/opt/opus}" \
+    -DICU_ROOT="${DESKPORT_ICU_ROOT:-$brew_prefix/opt/icu4c@78}" -DSUNSHINE_PUBLISHER_NAME=DeskPort \
     -DSUNSHINE_PUBLISHER_ISSUE_URL=https://github.com/keithxc/deskport/issues "${extra[@]}"
 cmake --build "$build_dir" --target sunshine -j"${DESKPORT_JOBS:-4}"

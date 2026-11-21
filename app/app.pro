@@ -720,7 +720,9 @@ macx {
     # Create Info.plist in object dir with the correct version string
     DISPLAY_VERSION = $$cat(version.txt)
     BUNDLE_VERSION = $$section(DISPLAY_VERSION, -, 0, 0)
-    system(sed -e 's/NUMERIC_VERSION/$$BUNDLE_VERSION/g' -e 's/DISPLAY_VERSION/$$DISPLAY_VERSION/g' $$PWD/Info.plist > $$OUT_PWD/Info.plist)|error("Cannot generate Info.plist")
+    DESKPORT_PLIST_MIN = 26.0
+    contains(CONFIG, imac_bigsur): DESKPORT_PLIST_MIN = 11.7
+    system(sed -e 's/NUMERIC_VERSION/$$BUNDLE_VERSION/g' -e 's/DISPLAY_VERSION/$$DISPLAY_VERSION/g' -e 's/MACOS_MIN_VERSION/$$DESKPORT_PLIST_MIN/g' $$PWD/Info.plist > $$OUT_PWD/Info.plist)|error("Cannot generate Info.plist")
 
     QMAKE_INFO_PLIST = $$OUT_PWD/Info.plist
 
@@ -732,6 +734,7 @@ macx {
 
     QMAKE_BUNDLE_DATA += APP_BUNDLE_RESOURCES APP_BUNDLE_PLIST
 
+    !contains(CONFIG, imac_bigsur) {
     # Compile native default/dark/clear materials; Qt must not flatten this icon.
     APP_ICON_OUTPUT = $$OUT_PWD/app-icon
     app_icon.target = app-icon/Assets.car
@@ -742,6 +745,7 @@ macx {
     APP_BUNDLE_NATIVE_ICON.files = $$APP_ICON_OUTPUT/Assets.car
     APP_BUNDLE_NATIVE_ICON.path = Contents/Resources
     QMAKE_BUNDLE_DATA += APP_BUNDLE_NATIVE_ICON
+    }
 
     !disable-prebuilts {
         APP_BUNDLE_FRAMEWORKS.files = $$files(../libs/mac/Frameworks/*.framework, true) $$files(../libs/mac/lib/*.dylib, true)

@@ -306,3 +306,27 @@ GPL-3.0-or-later。[LICENSE](../../LICENSE)、保持されているソースの�
 診断ログは既定で有効です。問題を再現してからログ ZIP を作成し、GitHub issue の下書きを開いてください。
 添付する前に ZIP の内容を確認してください：GitHub issue は公開されており、DeskPort が代わりにアップロードや送信を行うことはありません。
 [診断データとその範囲](../DIAGNOSTICS.md)を参照してください。
+
+## Intel iMac / Big Sur互換版の開発
+
+目的はmacOS 11.7.11のIntel iMacとWindowsで、同じアプリから送信・受信することです。本モニターと仮想拡張モニターの選択を対象とし、画面の連結・同時合成は対象外です。既存Foundation、Moonlight、認証情報、物理画面のICCと配置は保持し、別配置で候補を検証します
+
+初期改修は上流 `7f777d683a9f7ec9599b402452bff4aabc727b4f` が基準です。類似OSSの調査では、MoonlightのIntel向け同梱ライブラリとSunshineのAVFoundation取得を再利用します。旧Sunshineを丸ごと組み込む方式は、DeskPort独自の認証との互換性を失うため採用していません
+
+- `CONFIG+=imac_bigsur`：Qtクライアントをx86_64 / macOS 11.7対象でビルドし、Xcode 26専用アイコン生成を省きます
+- `DESKPORT_MACOS_PROFILE=intel-bigsur`：Macパッケージとホストの対象アーキテクチャを切り替えます。標準プロファイルは従来のarm64 / macOS 26です
+- `host/macos/legacy-screen-video.m`：同梱SunshineのAVFoundation取得を再利用するSDR用アダプターです。Big SurではmacOS 13専用のバックグラウンド復旧サービスを呼びません
+- `scripts/check-macos-target.py`：同梱Mach-OのIntelスライスと最低OSを検査し、新しいOS専用ライブラリが混入した候補を拒否します。これは実機動作の証明ではありません
+
+GitHub Actionsの手動実行ワークフロー `Intel Big Sur compatibility` は `macos-15-intel` とQt 6.5.3で、最初にクライアントとMac用アダプターをコンパイルします。成果物は**クライアントのみの開発候補**で、署名は開発用、サーバーはまだ同梱しません。Actionsはソース公開やReleaseを行わず、成果物を7日間保持します。初回のクラウド実行は未実施です
+
+ローカルで事前検査する場合：
+
+```sh
+python3 tests/test-macos-legacy.py
+python3 scripts/check-macos-target.py libs/mac --arch x86_64 --max-version 11.7.11
+```
+
+サーバー同梱版では、Intel / Big Surを対象にビルドしたFFmpeg等の依存関係が別途必要です。上流のarm64向けホスト用FFmpegアーカイブを流用せず、未指定の場合はビルドを止めます。ホスト用レシピには `DESKPORT_FFMPEG_ROOT` で適切な依存先を指定します。依存関係と全体ビルド、画面選択、4K送受信、入力解放、切断後の復旧は未検証です。途中の配信試験は増やさず、実装と事前検査後に実機でまとめて確認します
+
+参照： [DeskPort対応表](../PC_SUPPORT_MATRIX.md)、[Qt 6.5のmacOS対応](https://doc.qt.io/qt-6.5/macos.html)、[Sunshine v0.21の要件](https://docs.lizardbyte.dev/projects/sunshine/v0.21.0/about/overview.html)、[Moonlight](https://github.com/moonlight-stream/moonlight-qt)
