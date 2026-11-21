@@ -96,11 +96,7 @@ def main():
         print('Verified retained Intel Big Sur dependencies')
         return
     prefix.mkdir(exist_ok=True)
-    include = prefix / 'include'
-    include.mkdir(exist_ok=True)
-    shutil.copytree(REPO / 'libs/mac/include/openssl', include / 'openssl', dirs_exist_ok=True)
-    for header in (REPO / 'libs/mac/include').glob('opus*.h'):
-        shutil.copyfile(header, include / header.name)
+    shutil.copytree(REPO / 'libs/mac/include', prefix / 'include', dirs_exist_ok=True)
     (prefix / 'lib').mkdir(exist_ok=True)
     for name in ('libssl.3.dylib', 'libcrypto.3.dylib', 'libopus.a'):
         shutil.copyfile(REPO / 'libs/mac/lib' / name, prefix / 'lib' / name)

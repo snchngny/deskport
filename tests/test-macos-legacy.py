@@ -8,6 +8,7 @@ import tempfile
 import unittest
 import ast
 import os
+import shutil
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -94,6 +95,9 @@ class LegacyMacTests(unittest.TestCase):
                 logging = source / 'src/logging.h'
                 logging.parent.mkdir(parents=True)
                 logging.write_bytes(archive.extractfile('src/logging.h').read())
+                opus_module = source / 'cmake/dependencies/FindOpus.cmake'
+                opus_module.parent.mkdir(parents=True)
+                opus_module.write_bytes(archive.extractfile('cmake/dependencies/FindOpus.cmake').read())
             patch = ROOT / 'host/macos/patches/sunshine-screen-capture-kit.patch'
             patched = subprocess.run(['git', '-c', 'core.autocrlf=false', 'apply', '--include=cmake/compile_definitions/macos.cmake', '-'], input=patch.read_text().encode(), cwd=source, capture_output=True)
             self.assertEqual(patched.returncode, 0, patched.stderr.decode())
@@ -109,6 +113,30 @@ class LegacyMacTests(unittest.TestCase):
             self.assertEqual(target.read_text(), first)
             self.assertEqual((source / 'CMakeLists.txt').read_text().count('# DeskPort Big Sur format runtime'), 1)
             self.assertTrue((source / 'src/deskport/macos/legacy-screen-video.m').is_file())
+            cmake = shutil.which('cmake') or ('C:/msys64/ucrt64/bin/cmake.exe' if Path('C:/msys64/ucrt64/bin/cmake.exe').is_file() else None)
+            ninja = shutil.which('ninja') or ('C:/msys64/ucrt64/bin/ninja.exe' if Path('C:/msys64/ucrt64/bin/ninja.exe').is_file() else None)
+            if cmake and ninja:
+                # Configure the actual patched FindOpus against flat headers.
+                # This reproduces the native CI failure without a compiler.
+                project = source / 'opus-test'
+                project.mkdir()
+                prefix = source / 'opus-prefix'
+                (prefix / 'include').mkdir(parents=True)
+                (prefix / 'lib').mkdir()
+                (prefix / 'include/opus.h').write_text('#define DESKPORT_OPUS_LAYOUT_FIXTURE 1\n')
+                (prefix / 'lib/libopus.a').write_bytes(b'fixture archive')
+                (project / 'CMakeLists.txt').write_text(f'''cmake_minimum_required(VERSION 3.24)
+project(OpusLayout LANGUAGES NONE)
+set(Opus_ROOT_DIR "{prefix.as_posix()}")
+set(OPUS_USE_STATIC ON)
+include("{opus_module.as_posix()}")
+if(NOT Opus_FOUND OR NOT EXISTS "${{Opus_INCLUDE_DIR}}/opus/opus.h")
+    message(FATAL_ERROR "Legacy Opus header layout failed")
+endif()
+''')
+                configured = subprocess.run([cmake, '-G', 'Ninja', '-DCMAKE_MAKE_PROGRAM=' + ninja,
+                    '-S', str(project), '-B', str(project / 'build')], capture_output=True, text=True)
+                self.assertEqual(configured.returncode, 0, configured.stdout + configured.stderr)
 
 
 if __name__ == '__main__':
