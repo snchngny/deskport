@@ -214,7 +214,23 @@ UiPage {
         ColumnLayout {
             anchors.fill: parent; spacing: 12
             Label { visible: hostManager.displayWarning.length > 0; text: hostManager.displayWarning; color: ui.warning; wrapMode: Text.WordWrap; Layout.fillWidth: true }
-            Label { text: hostManager.physicalDisplaySharing ? qsTr("Shared Windows display") : qsTr("Built-in virtual display"); color: ui.text; font.pixelSize: 18; font.weight: Font.DemiBold }
+            Label { text: qsTr("Display to share"); color: ui.text }
+            ComboBox {
+                id: captureSourceChoice
+                Layout.fillWidth: true
+                enabled: !hostManager.running && !hostManager.changing
+                model: hostManager.captureSources
+                textRole: "label"
+                valueRole: "id"
+                currentIndex: {
+                    for (var i = 0; i < model.length; ++i)
+                        if (model[i].id === hostManager.captureSource) return i
+                    return -1
+                }
+                onActivated: hostManager.setCaptureSource(model[currentIndex].id)
+            }
+            Label { text: qsTr("Stop sharing before changing the display. Existing displays keep their resolution and layout."); color: ui.muted; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+            Label { text: hostManager.physicalDisplaySharing ? qsTr("Selected display") : qsTr("Built-in virtual display"); color: ui.text; font.pixelSize: 18; font.weight: Font.DemiBold }
             Label { text: hostManager.virtualDisplayActive ? qsTr("Active · %1 × %2 pixels").arg(hostManager.displayWidth).arg(hostManager.displayHeight) : (hostManager.physicalDisplaySharing ? qsTr("Shares this Windows desktop; supported resolutions are restored after disconnect") : (Qt.platform.os === "windows" ? qsTr("Created automatically when sharing starts") : qsTr("Created when an approved client connects"))); color: ui.accent; wrapMode: Text.WordWrap; Layout.fillWidth: true }
             Label { visible: hostManager.virtualDisplayActive; text: qsTr("Workspace · %1 × %2 · %3× scaling").arg(Math.round(hostManager.displayWidth / hostManager.displayScale)).arg(Math.round(hostManager.displayHeight / hostManager.displayScale)).arg(hostManager.displayScale); color: ui.muted; wrapMode: Text.WordWrap; Layout.fillWidth: true }
             Label { text: hostManager.physicalDisplaySharing ? qsTr("Uses this Windows desktop. Disconnecting restores the original resolution. Unsupported sizes are reported without changing the display.") : Qt.platform.os === "windows" ? qsTr("Creates a virtual desktop that follows the client window. Choose mirror, exclusive, or extend on the client. Disconnecting restores the previous display layout.") : qsTr("Disconnecting restores your physical screens and removes the virtual display. A brief network interruption keeps the workspace available for recovery."); color: ui.muted; wrapMode: Text.WordWrap; Layout.fillWidth: true }

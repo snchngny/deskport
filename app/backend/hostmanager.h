@@ -27,6 +27,8 @@ class HostManager : public QObject {
     Q_PROPERTY(int displayHeight READ displayHeight NOTIFY changed)
     Q_PROPERTY(bool virtualDisplayActive READ virtualDisplayActive NOTIFY changed)
     Q_PROPERTY(bool physicalDisplaySharing READ physicalDisplaySharing NOTIFY changed)
+    Q_PROPERTY(QVariantList captureSources READ captureSources NOTIFY changed)
+    Q_PROPERTY(QString captureSource READ captureSource NOTIFY changed)
     Q_PROPERTY(int sharingWidth READ sharingWidth NOTIFY changed)
     Q_PROPERTY(int sharingHeight READ sharingHeight NOTIFY changed)
     Q_PROPERTY(bool changing READ changing NOTIFY changed)
@@ -107,6 +109,9 @@ public:
     QString status() const { return m_Status; }
     QString displayWarning() const { return m_DisplayWarning; }
     Q_INVOKABLE void start(int width, int height);
+    QVariantList captureSources() const;
+    QString captureSource() const { return m_CaptureSource; }
+    Q_INVOKABLE bool setCaptureSource(const QString& source);
     Q_INVOKABLE void stop();
     Q_INVOKABLE void pair(const QString &pin, const QString &name);
     Q_INVOKABLE void permission(const QString &kind);
@@ -231,5 +236,6 @@ private:
     int m_RecoveryAttempt = 0, m_RequestedWidth = 2560, m_RequestedHeight = 1440;
     int m_DisplayFailures = 0;
     bool m_PhysicalFallback = false;
+    QString m_CaptureSource = QStringLiteral("virtual");
 
 };

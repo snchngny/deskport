@@ -73,6 +73,7 @@ bool HostManager::saveLinuxDisplayState() {
 }
 
 bool HostManager::physicalDisplaySharing() const {
+    if (m_CaptureSource != QStringLiteral("virtual")) return true;
 #ifdef Q_OS_WIN
     QSettings owned(QStringLiteral("HKEY_LOCAL_MACHINE\\Software\\DeskPort"), QSettings::NativeFormat);
     const auto instance=owned.value("VirtualDisplayDevice").toString();
@@ -80,6 +81,50 @@ bool HostManager::physicalDisplaySharing() const {
 #else
     return false;
 #endif
+}
+
+QVariantList HostManager::captureSources() const {
+    QVariantList sources{QVariantMap{{"id", "virtual"}, {"label", tr("Virtual extended display")}}};
+#ifdef Q_OS_MACOS
+    CGDirectDisplayID displays[64];
+    uint32_t count = 0;
+    if (CGGetActiveDisplayList(64, displays, &count) == kCGErrorSuccess) {
+        for (uint32_t i = 0; i < count; ++i) {
+            CFUUIDRef uuid = CGDisplayCreateUUIDFromDisplayID(displays[i]);
+            if (!uuid) continue;
+            CFStringRef value = CFUUIDCreateString(kCFAllocatorDefault, uuid);
+            CFRelease(uuid);
+            char buffer[128] = {};
+            const bool valid = value && CFStringGetCString(value, buffer, sizeof(buffer), kCFStringEncodingUTF8);
+            if (value) CFRelease(value);
+            if (!valid) continue;
+            const auto bounds = CGDisplayBounds(displays[i]);
+            const auto label = tr("Display %1 · %2 × %3%4").arg(i + 1)
+                .arg(int(bounds.size.width)).arg(int(bounds.size.height))
+                .arg(displays[i] == CGMainDisplayID() ? tr(" · Main") : QString());
+            sources.append(QVariantMap{{"id", QStringLiteral("mac:") + QString::fromUtf8(buffer)}, {"label", label}});
+        }
+    }
+#elif defined(Q_OS_WIN)
+    for (auto* screen : QGuiApplication::screens()) {
+        const auto label = screen->name() + (screen == QGuiApplication::primaryScreen() ? tr(" · Main") : tr(" · Extended"));
+        sources.append(QVariantMap{{"id", QStringLiteral("win:") + screen->name()}, {"label", label}});
+    }
+#endif
+    return sources;
+}
+
+bool HostManager::setCaptureSource(const QString& source) {
+    // Never switch a live stream or silently fall back to a different screen.
+    if (running() || changing()) return false;
+    bool found = false;
+    for (const auto& item : captureSources())
+        if (item.toMap().value("id").toString() == source) found = true;
+    if (!found) return false;
+    m_CaptureSource = source;
+    if (!m_Isolated) QSettings().setValue("host/captureSource", source);
+    emit changed();
+    return true;
 }
 
 bool HostManager::adaptiveDisplayAvailable() const {

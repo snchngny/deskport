@@ -89,6 +89,9 @@ HostManager::HostManager(QObject *parent, const QString &directory, bool interac
     connect(&m_Display,qOverload<int,QProcess::ExitStatus>(&QProcess::finished),this,[this]{m_CaretMonitor->stop();});
 #endif
     m_Isolated = !directory.isEmpty();
+    if (!m_Isolated) m_CaptureSource = QSettings().value("host/captureSource", "virtual").toString();
+    connect(qGuiApp, &QGuiApplication::screenAdded, this, [this](QScreen*) { emit changed(); });
+    connect(qGuiApp, &QGuiApplication::screenRemoved, this, [this](QScreen*) { emit changed(); });
 #ifdef Q_OS_LINUX
     // Only our Sunshine children own these ports. A crashed GUI must release
     // them even if the child ignores SIGTERM; the display helper separately
@@ -685,6 +688,12 @@ void HostManager::setStatus(const QString &value) {
 }
 void HostManager::start(int width, int height) {
     if (running() || m_ShuttingDown) return;
+    if (m_CaptureSource != QStringLiteral("virtual")) {
+        bool found = false;
+        for (const auto& item : captureSources())
+            if (item.toMap().value("id").toString() == m_CaptureSource) found = true;
+        if (!found) { setStatus(tr("The selected display is disconnected. Select a display before sharing.")); return; }
+    }
     if (m_TrustBusy) {
         QTimer::singleShot(50, this, [this, width, height] { start(width, height); });
         return;
@@ -766,6 +775,24 @@ void HostManager::start(int width, int height) {
     } else
 #endif
     {
+#if defined(Q_OS_MACOS) || defined(Q_OS_WIN)
+        if (m_CaptureSource != QStringLiteral("virtual")) {
+            m_DisplayWidth = m_DisplayHeight = 0; m_DisplayScale = 1; m_DisplayModes = {};
+#ifdef Q_OS_MACOS
+            const auto bytes = m_CaptureSource.mid(4).toUtf8();
+            CFStringRef text = CFStringCreateWithCString(kCFAllocatorDefault, bytes.constData(), kCFStringEncodingUTF8);
+            CFUUIDRef uuid = text ? CFUUIDCreateFromString(kCFAllocatorDefault, text) : nullptr;
+            const auto display = uuid ? CGDisplayGetDisplayIDFromUUID(uuid) : 0;
+            if (uuid) CFRelease(uuid);
+            if (text) CFRelease(text);
+            if (!display || !CGDisplayIsActive(display)) { beginStop(tr("The selected display is disconnected.")); return; }
+            startServer(int(display));
+#else
+            startServer(0);
+#endif
+        } else
+#endif
+        {
 #ifdef Q_OS_MACOS
         if (m_PhysicalFallback) {
             m_DisplayWidth = m_DisplayHeight = 0; m_DisplayScale = 1; m_DisplayModes = {};
@@ -797,6 +824,7 @@ void HostManager::start(int width, int height) {
 #else
             setStatus(tr("Preparing on-demand desktop sharing…"));
 #endif
+        }
         }
     }
     // Leave time for the installed Windows broker and owned device preparation.
@@ -852,11 +880,15 @@ void HostManager::startServer(int displayId) {
     hostEnvironment.insert("DESKPORT_SMART_STREAMING", "1");
     config.write("dd_configuration_option = disabled\n");
     // The helper owns mode restoration; Sunshine must not race it.
+    if (m_CaptureSource.startsWith(QStringLiteral("win:"))) {
+        config.write(QString("output_name = %1\n").arg(m_CaptureSource.mid(4)).toUtf8());
+    } else {
     QFile displayState(m_Directory + "/windows-display.json");
     if (displayState.open(QIODevice::ReadOnly)) {
         const auto output = QJsonDocument::fromJson(displayState.readAll()).object()["output"].toString();
         if (!output.isEmpty() && !output.contains('\n') && !output.contains('\r'))
             config.write(QString("output_name = %1\n").arg(output).toUtf8());
+    }
     }
 #endif
 #ifdef Q_OS_LINUX
