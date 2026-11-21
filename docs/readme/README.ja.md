@@ -322,6 +322,8 @@ GitHub Actionsの手動実行ワークフロー `Intel Big Sur compatibility` �
 
 ローカルで事前検査する場合：
 
+この互換版では上流のLinux・Windows・表示契約CIも手動実行に限定します。初回pushだけで別プラットフォームのビルドが始まることはありません
+
 ```sh
 python3 tests/test-macos-legacy.py
 python3 scripts/check-macos-target.py libs/mac --arch x86_64 --max-version 11.7.11
