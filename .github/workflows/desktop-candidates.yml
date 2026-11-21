@@ -3,6 +3,11 @@ name: Desktop distribution candidates
 on:
   workflow_dispatch:
     inputs:
+      platform:
+        description: Candidate platform
+        type: choice
+        options: [all, windows, apple-silicon]
+        default: all
       release_tag:
         description: Existing draft release tag
         required: true
@@ -13,6 +18,7 @@ permissions:
 
 jobs:
   windows:
+    if: inputs.platform == 'all' || inputs.platform == 'windows'
     runs-on: ubuntu-24.04
     timeout-minutes: 360
     permissions:
@@ -32,7 +38,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           DESKPORT_RELEASE_TAG: ${{ inputs.release_tag }}
         run: python3 scripts/stage-draft-release.py --target windows --tag "$DESKPORT_RELEASE_TAG" --root "$RUNNER_TEMP/deskport-build" --repo "$GITHUB_REPOSITORY"
+      - name: Show sanitized build errors
+        if: failure()
+        run: python3 scripts/export-build-errors.py "$RUNNER_TEMP/deskport-build"
   apple-silicon:
+    if: inputs.platform == 'all' || inputs.platform == 'apple-silicon'
     runs-on: macos-26
     timeout-minutes: 180
     permissions:
@@ -55,3 +65,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           DESKPORT_RELEASE_TAG: ${{ inputs.release_tag }}
         run: python3 scripts/stage-draft-release.py --target macos --tag "$DESKPORT_RELEASE_TAG" --root "$RUNNER_TEMP/deskport-build" --repo "$GITHUB_REPOSITORY"
+      - name: Show sanitized build errors
+        if: failure()
+        run: python3 scripts/export-build-errors.py "$RUNNER_TEMP/deskport-build"
