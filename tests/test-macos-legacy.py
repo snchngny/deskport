@@ -6,6 +6,9 @@ import struct
 import tarfile
 import tempfile
 import unittest
+import ast
+import os
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -26,6 +29,25 @@ def macho(cpu=0x01000007, minimum=0x000b0000):
 
 
 class LegacyMacTests(unittest.TestCase):
+    def test_deployed_qml_plugin_resolves_selected_qt_sdk(self):
+        tree = ast.parse((ROOT / 'scripts/fix-macos-dependencies.py').read_text())
+        function = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'resolve')
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            suffix = 'QtQuickShapes.framework/Versions/A/QtQuickShapes'
+            sdk = root / 'selected-sdk/lib'
+            source = sdk / suffix
+            source.parent.mkdir(parents=True)
+            source.write_bytes(b'qt-framework')
+            namespace = dict(Path=Path, os=os, origins={}, app=root / 'DeskPort.app',
+                             frameworks=root / 'Frameworks', loader_rpaths=lambda unused: [])
+            exec(compile(ast.Module(body=[function], type_ignores=[]), '<production-resolver>', 'exec'), namespace)
+            with patch.dict(os.environ, {'DESKPORT_QT_LIBRARY_PATH': str(sdk)}):
+                self.assertEqual(namespace['resolve']('@rpath/' + suffix, root / 'plugin.dylib'), source.resolve())
+            with patch.dict(os.environ, {'DESKPORT_QT_LIBRARY_PATH': ''}):
+                with self.assertRaisesRegex(RuntimeError, 'Cannot resolve'):
+                    namespace['resolve']('@rpath/' + suffix, root / 'plugin.dylib')
+
     def test_native_big_sur_and_wrong_architecture(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'program'

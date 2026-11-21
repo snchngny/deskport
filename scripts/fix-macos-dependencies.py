@@ -123,6 +123,15 @@ def resolve(dep, binary):
             candidate = Path(entry) / suffix
             if candidate.exists():
                 candidates.add(candidate.resolve())
+        # SDK-installed Qt plugins use executable-relative rpaths. After QML
+        # deployment these no longer lead back to their SDK's frameworks.
+        # Use only the explicitly selected SDK, and never override a working
+        # loader context or mix multiple Qt installations.
+        qt_library_path = os.environ.get('DESKPORT_QT_LIBRARY_PATH')
+        if not candidates and qt_library_path and suffix.startswith('Qt') and '.framework/' in suffix:
+            candidate = Path(qt_library_path) / suffix
+            if candidate.is_file():
+                candidates.add(candidate.resolve())
         if len(candidates) == 1:
             return candidates.pop()
         if len(candidates) > 1:

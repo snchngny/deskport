@@ -38,6 +38,7 @@ jobs:
       - name: Deploy client Qt runtime
         run: |
           export PATH="$RUNNER_TEMP/qt/6.5.3/macos/bin:$PATH"
+          export DESKPORT_QT_LIBRARY_PATH="$(qmake -query QT_INSTALL_LIBS)"
           python3 scripts/deploy-macos-runtime.py "$RUNNER_TEMP/deskport-client/app/DeskPort.app" app
           python3 scripts/fix-macos-dependencies.py "$RUNNER_TEMP/deskport-client/app/DeskPort.app"
           python3 scripts/check-macos-target.py "$RUNNER_TEMP/deskport-client/app/DeskPort.app" --arch x86_64 > "$RUNNER_TEMP/macos-target.json"
