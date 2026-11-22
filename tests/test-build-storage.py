@@ -85,6 +85,9 @@ class StorageTests(unittest.TestCase):
 
     def test_missing_helper_other_host_uses_writable_temp_not_home(self):
         env = dict(self.env, HOME='/nonexistent/unwritable', TMPDIR='/private/tmp')
+        # Exercise the generic fallback independently of a CI runner's real
+        # RUNNER_TEMP, which correctly takes precedence over tempfile.gettempdir.
+        env.pop('RUNNER_TEMP', None)
         with patch.dict(os.environ, env, clear=True), patch.object(build_storage, 'shared_helper', return_value=None), patch.object(build_storage, 'on_mm4', return_value=False), patch('tempfile.gettempdir', return_value='/private/tmp'):
             storage = build_storage.Storage()
             values = storage.environment()
