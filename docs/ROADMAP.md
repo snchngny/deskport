@@ -1,5 +1,6 @@
 ## Compatibility fork checkpoint — 2026-11-22
 
+- Runtime acceptance: Intel Big Sur receives Windows video after a process-local short-TMPDIR workaround. Normal launch needs shorter session IPC names; the macOS host also needs the pre-macOS-12 IOKit default-port symbol during display enumeration. Both fixes await a rebuilt package and bidirectional runtime acceptance. Receiver network RTT is not end-to-end input/display latency.
 - Implemented, awaiting native build/runtime acceptance: explicit host-side display selection without physical layout changes, Intel Big Sur qmake/package profile, AVFoundation capture adapter, guarded modern macOS service calls, and a Mach-O deployment-target gate.
 - CI: Intel client compilation on macOS 15 x86_64 with Qt 6.5.3; independent full Windows and Apple Silicon candidates. Build output staging is restricted to an existing draft release.
 - Pending: a complete Intel Big Sur host dependency build and package, all three platform build results, real-machine display/input checks, and final distribution status. Compilation is not low-latency acceptance.

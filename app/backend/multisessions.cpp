@@ -25,10 +25,12 @@ MultiSessions::MultiSessions(PeerManager* peers, QByteArray certificate, QByteAr
     : QObject(parent), m_Certificate(certificate), m_Key(key), m_Peers(peers) {
     m_Identity = SessionGraph::identity(QSslCertificate(m_Certificate));
     m_Server.setSocketOptions(QLocalServer::UserAccessOption);
-    m_Server.listen(QStringLiteral("deskport-sessions-") + QUuid::createUuid().toString(QUuid::WithoutBraces));
+    // macOS expands /var to /private/var in its temporary path. Keep the
+    // endpoint below sockaddr_un.sun_path[104] with the normal per-user TMPDIR.
+    m_Server.listen(QStringLiteral("dp-s-") + QUuid::createUuid().toString(QUuid::WithoutBraces));
     connect(&m_Server, &QLocalServer::newConnection, this, &MultiSessions::accept);
     m_VideoServer.setSocketOptions(QLocalServer::UserAccessOption);
-    m_VideoServer.listen(QStringLiteral("deskport-video-") + QUuid::createUuid().toString(QUuid::WithoutBraces));
+    m_VideoServer.listen(QStringLiteral("dp-v-") + QUuid::createUuid().toString(QUuid::WithoutBraces));
     connect(&m_VideoServer, &QLocalServer::newConnection, this, &MultiSessions::acceptVideo);
 }
 MultiSessions::~MultiSessions() {
@@ -188,7 +190,10 @@ void MultiSessions::launch(const QString& id) {
     const auto peer = m_Peers->sessionPeer(id);
     const QSslCertificate cert(peer.value("clientCert").toString().toUtf8());
     const int port = peer.value("bindingPort").toInt();
-    if (!m_Server.isListening() || (canvasEnabled() && !m_VideoServer.isListening()) || !peer.value("ready").toBool() || !peer.value("granted").toBool() || cert.isNull() || port < 1 || port > 65535 || entry->address.isEmpty()) {
+    if (!m_Server.isListening() || (canvasEnabled() && !m_VideoServer.isListening())) {
+        ended(entry, tr("Local session communication could not start. Restart DeskPort and check the temporary folder.")); return;
+    }
+    if (!peer.value("ready").toBool() || !peer.value("granted").toBool() || cert.isNull() || port < 1 || port > 65535 || entry->address.isEmpty()) {
         ended(entry, tr("The device binding is unavailable. Refresh the device and try again.")); return;
     }
     entry->reserved = SessionGraph::reserve(m_Identity, {entry->token,entry->address,quint16(port),cert,m_Certificate,m_Key});

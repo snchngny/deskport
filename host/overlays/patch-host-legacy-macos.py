@@ -25,6 +25,15 @@ def apply(source, repo):
     target = source / 'src/deskport/macos/legacy-screen-video.m'
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(repo / 'host/macos/legacy-screen-video.m', target)
+    # kIOMainPortDefault is a weak-imported data symbol introduced in macOS 12.
+    # Loading its value on Big Sur dereferences address zero during enumeration.
+    mac_api = source / 'third-party/libdisplaydevice/src/macos/mac_api_layer.cpp'
+    if mac_api.is_file():
+        text = mac_api.read_text(encoding='utf-8')
+        if 'IOServiceGetMatchingServices(kIOMainPortDefault,' in text:
+            text = text.replace('IOServiceGetMatchingServices(kIOMainPortDefault,',
+                                'IOServiceGetMatchingServices(kIOMasterPortDefault,')
+            mac_api.write_text(text, encoding='utf-8')
     # The reused Moonlight Opus headers are flat; Sunshine includes opus/opus.h.
     # Adapt the include layout in this run's build directory, not the retained cache.
     opus = source / 'cmake/dependencies/FindOpus.cmake'

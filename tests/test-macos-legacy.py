@@ -9,6 +9,8 @@ import unittest
 import ast
 import os
 import shutil
+import socket
+import re
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -30,6 +32,23 @@ def macho(cpu=0x01000007, minimum=0x000b0000):
 
 
 class LegacyMacTests(unittest.TestCase):
+    @unittest.skipUnless(os.name == 'posix' and hasattr(socket, 'AF_UNIX'), 'Native Unix socket regression')
+    def test_session_endpoints_bind_under_normal_macos_temp_path(self):
+        # /private/var/folders/.../T is 56 bytes on the affected Big Sur host.
+        # Exercise the kernel bind limit, including the old failing endpoint.
+        text = (ROOT / 'app/backend/multisessions.cpp').read_text()
+        prefixes = re.findall(r'm_(?:Video)?Server\.listen\(QStringLiteral\("([^"]+)"\)', text)
+        self.assertEqual(len(prefixes), 2)
+        with tempfile.TemporaryDirectory(prefix='dp-', dir='/tmp') as directory:
+            root = Path(directory) / ('x' * (56 - len(os.fsencode(directory)) - 1))
+            root.mkdir()
+            with socket.socket(socket.AF_UNIX) as endpoint:
+                with self.assertRaises((OSError, ValueError)):
+                    endpoint.bind(str(root / ('deskport-sessions-' + '1' * 36)))
+            for prefix in prefixes:
+                with socket.socket(socket.AF_UNIX) as endpoint:
+                    endpoint.bind(str(root / (prefix + '1' * 36)))
+
     def test_deployed_qml_plugin_resolves_selected_qt_sdk(self):
         tree = ast.parse((ROOT / 'scripts/fix-macos-dependencies.py').read_text())
         function = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'resolve')
@@ -130,6 +149,9 @@ class LegacyMacTests(unittest.TestCase):
             self.assertEqual(patched.returncode, 0, patched.stderr.decode())
             overlay.apply(source, ROOT)
             first = target.read_text()
+            mac_api = source / 'third-party/libdisplaydevice/src/macos/mac_api_layer.cpp'
+            self.assertNotIn('IOServiceGetMatchingServices(kIOMainPortDefault,', mac_api.read_text())
+            self.assertIn('IOServiceGetMatchingServices(kIOMasterPortDefault,', mac_api.read_text())
             self.assertNotIn('framework ScreenCaptureKit', first)
             self.assertNotIn('/color-conversion.m', first)
             self.assertIn('/legacy-screen-video.m', first)

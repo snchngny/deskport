@@ -340,7 +340,7 @@ commonName = supplied
         build_root = Path(subprocess.check_output(
             ["bash", str(root / "scripts/build-paths.sh"), "root"], text=True).strip())
         candidates = [Path(override)] if override else [build_root / "t", build_root / "sockets", build_root]
-        longest_name = "deskport-sessions-" + "x" * 36
+        longest_name = "dp-s-" + "x" * 36
         # Qt reserves two NUL bytes on Linux, one on Darwin (sun_path[104]).
         limit = 103 if sys.platform == "darwin" else 106
         socket_root = next((candidate.absolute() for candidate in candidates
