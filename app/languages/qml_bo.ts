@@ -2802,6 +2802,18 @@
             <source>Creates a virtual desktop that follows the client window. Choose mirror, exclusive, or extend on the client. Disconnecting restores the previous display layout.</source>
             <translation>མཁོ་སྤྲོད་བྱེད་མཁན་གྱི་སྒེའུ་ཁུང་རྗེས་སུ་འབྲང་བའི་གཟུགས་བརྙན་གྱི་ཡིག་ཆའི་སྟེགས་བུ་ཞིག་གསར་འཛུགས་བྱེད། མེ་ལོང་དང་། དམིགས་བསལ། ཡང་ན་ཚོང་ཤག་ལ་རྒྱ་བསྐྱེད་འདེམས། མཐུད་མཚམས་འཇོག་པ་དེས་སྔོན་གྱི་གསལ་སྟོན་བཀོད་སྒྲིག་སླར་གསོ་བྱེད།</translation>
         </message>
+        <message>
+            <source>Display to share</source>
+            <translation>མཉམ་སྤྱོད་བྱ་རྒྱུའི་འཆར་ངོས།</translation>
+        </message>
+        <message>
+            <source>Selected display</source>
+            <translation>བདམས་པའི་འཆར་ངོས།</translation>
+        </message>
+        <message>
+            <source>Stop sharing before changing the display. Existing displays keep their resolution and layout.</source>
+            <translation>འཆར་ངོས་མ་བརྗེས་གོང་མཉམ་སྤྱོད་མཚམས་འཇོག་བྱོས། ཡོད་པའི་འཆར་ངོས་ཀྱི་གསལ་ཚད་དང་བཀོད་སྒྲིག་སོར་གནས་བྱེད།</translation>
+        </message>
     </context>
     <context>
         <name>BindView</name>

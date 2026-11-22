@@ -2807,6 +2807,18 @@
             <source>Creates a virtual desktop that follows the client window. Choose mirror, exclusive, or extend on the client. Disconnecting restores the previous display layout.</source>
             <translation>Creëert een virtueel bureaublad dat het clientvenster volgt. Kies voor mirror, exclusief of uitbreiding op de klant. Als u de verbinding verbreekt, wordt de vorige schermindeling hersteld.</translation>
         </message>
+        <message>
+            <source>Display to share</source>
+            <translation>Te delen beeldscherm</translation>
+        </message>
+        <message>
+            <source>Selected display</source>
+            <translation>Geselecteerd beeldscherm</translation>
+        </message>
+        <message>
+            <source>Stop sharing before changing the display. Existing displays keep their resolution and layout.</source>
+            <translation>Stop het delen voordat u van beeldscherm wisselt. Bestaande beeldschermen behouden hun resolutie en indeling.</translation>
+        </message>
     </context>
     <context>
         <name>BindView</name>

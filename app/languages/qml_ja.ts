@@ -2810,6 +2810,18 @@
             <source>Creates a virtual desktop that follows the client window. Choose mirror, exclusive, or extend on the client. Disconnecting restores the previous display layout.</source>
             <translation>クライアントのウィンドウサイズに合わせて仮想デスクトップを作成します。クライアントでミラー、専用、拡張を選択できます。切断すると以前の画面配置に戻ります。</translation>
         </message>
+        <message>
+            <source>Display to share</source>
+            <translation>共有するディスプレイ</translation>
+        </message>
+        <message>
+            <source>Selected display</source>
+            <translation>選択したディスプレイ</translation>
+        </message>
+        <message>
+            <source>Stop sharing before changing the display. Existing displays keep their resolution and layout.</source>
+            <translation>ディスプレイを変更する前に共有を停止してください。既存のディスプレイの解像度と配置は維持されます</translation>
+        </message>
     </context>
     <context>
         <name>BindView</name>

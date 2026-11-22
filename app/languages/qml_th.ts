@@ -2807,6 +2807,18 @@
             <source>Creates a virtual desktop that follows the client window. Choose mirror, exclusive, or extend on the client. Disconnecting restores the previous display layout.</source>
             <translation>สร้างเดสก์ท็อปเสมือนที่ตามหน้าต่างไคลเอ็นต์ เลือกมิเรอร์ เอกสิทธิ์เฉพาะบุคคล หรือขยายบนไคลเอนต์ การยกเลิกการเชื่อมต่อจะคืนค่าเค้าโครงการแสดงผลก่อนหน้า</translation>
         </message>
+        <message>
+            <source>Display to share</source>
+            <translation>จอภาพที่จะแชร์</translation>
+        </message>
+        <message>
+            <source>Selected display</source>
+            <translation>จอภาพที่เลือก</translation>
+        </message>
+        <message>
+            <source>Stop sharing before changing the display. Existing displays keep their resolution and layout.</source>
+            <translation>หยุดแชร์ก่อนเปลี่ยนจอภาพ จอภาพที่มีอยู่จะคงความละเอียดและการจัดวางเดิมไว้</translation>
+        </message>
     </context>
     <context>
         <name>BindView</name>

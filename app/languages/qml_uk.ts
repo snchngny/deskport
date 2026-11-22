@@ -2807,6 +2807,18 @@
             <source>Creates a virtual desktop that follows the client window. Choose mirror, exclusive, or extend on the client. Disconnecting restores the previous display layout.</source>
             <translation>Створює віртуальний робочий стіл, який слідує за вікном клієнта. Вибирайте дзеркальні, ексклюзивні або розширені на клієнта. Від’єднання відновлює попередній вигляд дисплея.</translation>
         </message>
+        <message>
+            <source>Display to share</source>
+            <translation>Екран для трансляції</translation>
+        </message>
+        <message>
+            <source>Selected display</source>
+            <translation>Вибраний екран</translation>
+        </message>
+        <message>
+            <source>Stop sharing before changing the display. Existing displays keep their resolution and layout.</source>
+            <translation>Зупиніть трансляцію перед зміною екрана. Роздільна здатність і розташування наявних екранів зберігаються.</translation>
+        </message>
     </context>
     <context>
         <name>BindView</name>

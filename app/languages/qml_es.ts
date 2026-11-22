@@ -2802,6 +2802,18 @@
             <source>Creates a virtual desktop that follows the client window. Choose mirror, exclusive, or extend on the client. Disconnecting restores the previous display layout.</source>
             <translation>Crea un escritorio virtual que se adapta a la ventana del cliente. Elija duplicar, exclusivo o extender en el cliente. Al desconectarse, se restaura la disposición anterior de las pantallas.</translation>
         </message>
+        <message>
+            <source>Display to share</source>
+            <translation>Pantalla para compartir</translation>
+        </message>
+        <message>
+            <source>Selected display</source>
+            <translation>Pantalla seleccionada</translation>
+        </message>
+        <message>
+            <source>Stop sharing before changing the display. Existing displays keep their resolution and layout.</source>
+            <translation>Detén el uso compartido antes de cambiar de pantalla. Las pantallas existentes conservan su resolución y distribución.</translation>
+        </message>
     </context>
     <context>
         <name>BindView</name>

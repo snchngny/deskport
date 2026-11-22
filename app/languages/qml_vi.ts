@@ -2807,6 +2807,18 @@
             <source>Creates a virtual desktop that follows the client window. Choose mirror, exclusive, or extend on the client. Disconnecting restores the previous display layout.</source>
             <translation>Tạo một màn hình ảo theo sau cửa sổ máy khách. Chọn nhân bản, độc quyền hoặc mở rộng trên máy khách. Việc ngắt kết nối sẽ khôi phục bố cục hiển thị trước đó.</translation>
         </message>
+        <message>
+            <source>Display to share</source>
+            <translation>Màn hình để chia sẻ</translation>
+        </message>
+        <message>
+            <source>Selected display</source>
+            <translation>Màn hình đã chọn</translation>
+        </message>
+        <message>
+            <source>Stop sharing before changing the display. Existing displays keep their resolution and layout.</source>
+            <translation>Dừng chia sẻ trước khi đổi màn hình. Các màn hình hiện có giữ nguyên độ phân giải và bố cục.</translation>
+        </message>
     </context>
     <context>
         <name>BindView</name>

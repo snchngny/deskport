@@ -2802,6 +2802,18 @@
             <source>Creates a virtual desktop that follows the client window. Choose mirror, exclusive, or extend on the client. Disconnecting restores the previous display layout.</source>
             <translation>يقوم بإنشاء سطح مكتب افتراضي يتبع نافذة العميل. اختر المرآة أو الحصرية أو الممتدة على العميل. يؤدي قطع الاتصال إلى استعادة تخطيط العرض السابق.</translation>
         </message>
+        <message>
+            <source>Display to share</source>
+            <translation>الشاشة المراد مشاركتها</translation>
+        </message>
+        <message>
+            <source>Selected display</source>
+            <translation>الشاشة المحددة</translation>
+        </message>
+        <message>
+            <source>Stop sharing before changing the display. Existing displays keep their resolution and layout.</source>
+            <translation>أوقف المشاركة قبل تغيير الشاشة. تحتفظ الشاشات الحالية بدقتها وترتيبها.</translation>
+        </message>
     </context>
     <context>
         <name>BindView</name>

@@ -2802,6 +2802,18 @@
             <source>Creates a virtual desktop that follows the client window. Choose mirror, exclusive, or extend on the client. Disconnecting restores the previous display layout.</source>
             <translation>Mencipta desktop maya yang mengikuti tetingkap klien. Pilih cermin, eksklusif atau lanjutkan pada pelanggan. Memutuskan sambungan memulihkan reka letak paparan sebelumnya.</translation>
         </message>
+        <message>
+            <source>Display to share</source>
+            <translation>Paparan untuk dikongsi</translation>
+        </message>
+        <message>
+            <source>Selected display</source>
+            <translation>Paparan dipilih</translation>
+        </message>
+        <message>
+            <source>Stop sharing before changing the display. Existing displays keep their resolution and layout.</source>
+            <translation>Hentikan perkongsian sebelum menukar paparan. Paparan sedia ada mengekalkan resolusi dan susun aturnya.</translation>
+        </message>
     </context>
     <context>
         <name>BindView</name>

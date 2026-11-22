@@ -2807,6 +2807,18 @@
             <source>Creates a virtual desktop that follows the client window. Choose mirror, exclusive, or extend on the client. Disconnecting restores the previous display layout.</source>
             <translation>İstemci penceresini takip eden bir sanal masaüstü oluşturur. İstemcide yansıtma, özel veya genişletme seçeneğini seçin. Bağlantının kesilmesi önceki ekran düzenini geri yükler.</translation>
         </message>
+        <message>
+            <source>Display to share</source>
+            <translation>Paylaşılacak ekran</translation>
+        </message>
+        <message>
+            <source>Selected display</source>
+            <translation>Seçilen ekran</translation>
+        </message>
+        <message>
+            <source>Stop sharing before changing the display. Existing displays keep their resolution and layout.</source>
+            <translation>Ekranı değiştirmeden önce paylaşımı durdurun. Mevcut ekranların çözünürlüğü ve düzeni korunur.</translation>
+        </message>
     </context>
     <context>
         <name>BindView</name>

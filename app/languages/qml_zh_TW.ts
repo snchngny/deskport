@@ -2830,6 +2830,18 @@
             <source>Creates a virtual desktop that follows the client window. Choose mirror, exclusive, or extend on the client. Disconnecting restores the previous display layout.</source>
             <translation>建立跟隨客戶端視窗尺寸的虛擬桌面。在客戶端選擇鏡像、獨佔或延伸；中斷連線後恢復原本的螢幕配置。</translation>
         </message>
+        <message>
+            <source>Display to share</source>
+            <translation>要共享的顯示器</translation>
+        </message>
+        <message>
+            <source>Selected display</source>
+            <translation>所選顯示器</translation>
+        </message>
+        <message>
+            <source>Stop sharing before changing the display. Existing displays keep their resolution and layout.</source>
+            <translation>變更顯示器前請停止共享。現有顯示器會保留其解析度與配置。</translation>
+        </message>
     </context>
     <context>
         <name>BindView</name>

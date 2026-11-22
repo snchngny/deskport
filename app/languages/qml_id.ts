@@ -2802,6 +2802,18 @@
             <source>Creates a virtual desktop that follows the client window. Choose mirror, exclusive, or extend on the client. Disconnecting restores the previous display layout.</source>
             <translation>Membuat desktop virtual yang mengikuti jendela klien. Pilih mirror, eksklusif, atau perluasan pada klien. Memutuskan sambungan akan memulihkan tata letak tampilan sebelumnya.</translation>
         </message>
+        <message>
+            <source>Display to share</source>
+            <translation>Layar yang dibagikan</translation>
+        </message>
+        <message>
+            <source>Selected display</source>
+            <translation>Layar terpilih</translation>
+        </message>
+        <message>
+            <source>Stop sharing before changing the display. Existing displays keep their resolution and layout.</source>
+            <translation>Hentikan berbagi sebelum mengganti layar. Resolusi dan tata letak layar yang ada tetap dipertahankan.</translation>
+        </message>
     </context>
     <context>
         <name>BindView</name>

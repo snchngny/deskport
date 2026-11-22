@@ -61,6 +61,23 @@ for qt, description in metadata.items():
                 translation.set('type', status)
             elif not value:
                 translation.set('type', 'unfinished')
+    # Desktop-only adapters may add native UI outside the shared catalog.
+    # Preserve those standard Qt TS messages while core-owned tuples continue
+    # to be generated exclusively from the pinned core table.
+    if path.exists():
+        generated = {c.findtext('name'): c for c in tree.getroot().findall('context')}
+        for previous in ET.parse(path).getroot().findall('context'):
+            name = previous.findtext('name')
+            target = generated.get(name)
+            known = {m.findtext('source') for m in target.findall('message')} if target is not None else set()
+            extras = [copy.deepcopy(m) for m in previous.findall('message') if m.findtext('source') not in known]
+            if not extras:
+                continue
+            if target is None:
+                target = ET.SubElement(tree.getroot(), 'context')
+                ET.SubElement(target, 'name').text = name
+                generated[name] = target
+            target.extend(extras)
     ET.indent(tree, space='    ')
     expected = '<?xml version="1.0" encoding="utf-8"?>\n<!DOCTYPE TS>\n'+ET.tostring(tree.getroot(), encoding='unicode')+'\n'
     if args.check:

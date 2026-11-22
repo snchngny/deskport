@@ -2807,6 +2807,18 @@
             <source>Creates a virtual desktop that follows the client window. Choose mirror, exclusive, or extend on the client. Disconnecting restores the previous display layout.</source>
             <translation>एक वर्चुअल डेस्कटॉप बनाता है जो क्लाइंट विंडो का अनुसरण करता है। मिरर, एक्सक्लूसिव या क्लाइंट पर एक्सटेंड चुनें। डिस्कनेक्ट करने से पिछला डिस्प्ले लेआउट पुनर्स्थापित हो जाता है।</translation>
         </message>
+        <message>
+            <source>Display to share</source>
+            <translation>साझा करने के लिए डिस्प्ले</translation>
+        </message>
+        <message>
+            <source>Selected display</source>
+            <translation>चयनित डिस्प्ले</translation>
+        </message>
+        <message>
+            <source>Stop sharing before changing the display. Existing displays keep their resolution and layout.</source>
+            <translation>डिस्प्ले बदलने से पहले साझा करना बंद करें। मौजूदा डिस्प्ले का रिज़ॉल्यूशन और लेआउट बरकरार रहता है।</translation>
+        </message>
     </context>
     <context>
         <name>BindView</name>

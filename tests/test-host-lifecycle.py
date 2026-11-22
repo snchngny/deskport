@@ -121,7 +121,7 @@ if (state / "credentials/cert.pem").exists():
                 (state / "management-gate-timed-out").touch()
                 sys.exit(19)
             time.sleep(0.01)
-    import base64, http.server, json, ssl
+    import base64, http.server, json, ssl, socketserver
     config = dict(line.split(" = ", 1) for line in pathlib.Path(sys.argv[1]).read_text().splitlines() if " = " in line)
     session_file = state / "test-sessions.json"
     session_file.write_text(json.dumps(dict(generation=0, sessions=0, lease="")))
@@ -178,7 +178,14 @@ if (state / "credentials/cert.pem").exists():
             self.send_response(200); self.send_header("Content-Length", str(len(data))); self.end_headers(); self.wfile.write(data)
         do_GET = do_POST = handle_session
     (state / "management-phase").write_text("http-bind")
-    server = http.server.HTTPServer(("127.0.0.1", int(config["port"]) + 1), Handler)
+    class LoopbackServer(http.server.HTTPServer):
+        def server_bind(self):
+            # HTTPServer performs a reverse-DNS lookup in server_bind. This
+            # loopback-only fixture has no need to consult the runner's DNS.
+            socketserver.TCPServer.server_bind(self)
+            self.server_name = "localhost"
+            self.server_port = self.server_address[1]
+    server = LoopbackServer(("127.0.0.1", int(config["port"]) + 1), Handler)
     (state / "management-phase").write_text("tls-certificate")
     tls = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     tls.load_cert_chain(state / "credentials/cert.pem", state / "credentials/key.pem")
