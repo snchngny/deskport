@@ -87,10 +87,7 @@ if "--creds" in sys.argv:
     (state / "auth-started").touch()
     if mode == "auth-fail": sys.exit(3)
     if mode == "auth-gated":
-        # The test probes an intentionally absent management endpoint before
-        # opening this gate. Leave room for Qt's ten-second transfer deadline
-        # and native TLS initialization; the coordinator still releases it.
-        deadline = time.monotonic() + 30
+        deadline = time.monotonic() + 4
         while not (state / "auth-release").exists():
             if time.monotonic() >= deadline:
                 (state / "auth-gate-timed-out").touch()
@@ -108,9 +105,17 @@ if mode in ("stubborn", "stubborn-slow-display"): signal.signal(signal.SIGTERM, 
 (state / "host-started").touch()
 print("Connection started 192.0.2.99 token=fixture-secret", flush=True)
 # Loopback-only, certificate-pinned management fixture; never a personal host.
+def management_failure(kind, value, tb):
+    import traceback
+    frames = traceback.extract_tb(tb)
+    (state / "management-error").write_text(kind.__name__ + ":" + str(frames[-1].lineno if frames else 0))
+sys.excepthook = management_failure
+(state / "management-phase").write_text("certificate-present" if (state / "credentials/cert.pem").exists() else "certificate-absent")
 if (state / "credentials/cert.pem").exists():
     if (state / "management-start-gated").exists():
-        deadline = time.monotonic() + 4
+        # Leave room for the intentionally absent endpoint probe's ten-second
+        # transfer deadline. The test coordinator still opens this fixture gate.
+        deadline = time.monotonic() + 30
         while not (state / "management-release").exists():
             if time.monotonic() >= deadline:
                 (state / "management-gate-timed-out").touch()
@@ -172,7 +177,9 @@ if (state / "credentials/cert.pem").exists():
             data = json.dumps(output).encode()
             self.send_response(200); self.send_header("Content-Length", str(len(data))); self.end_headers(); self.wfile.write(data)
         do_GET = do_POST = handle_session
+    (state / "management-phase").write_text("http-bind")
     server = http.server.HTTPServer(("127.0.0.1", int(config["port"]) + 1), Handler)
+    (state / "management-phase").write_text("tls-certificate")
     tls = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     tls.load_cert_chain(state / "credentials/cert.pem", state / "credentials/key.pem")
     server.socket = tls.wrap_socket(server.socket, server_side=True)

@@ -1434,7 +1434,9 @@ private slots:
             {fp, QJsonObject{{"ready", true}, {"granted", true}}}}}}));
         HostManager host(nullptr, dir.path()+"/host");
         PeerManager server(&host, bCert, credential("TEST_KEY_B"), dir.path()+"/binding", 0, QHostAddress::LocalHost);
+        QVERIFY2(server.port() != 0, qPrintable(server.status()));
         const auto hostPath = dir.path()+"/host/";
+        QVERIFY(QFile::exists(hostPath+"credentials/cert.pem"));
         QFile gate(hostPath+"management-start-gated");
         QVERIFY(gate.open(QIODevice::WriteOnly)); gate.close();
         host.start(2560, 1440);
@@ -1456,9 +1458,17 @@ private slots:
         QCOMPARE(management["code"].toString(), QString("unavailable"));
         QFile release(hostPath+"management-release");
         QVERIFY(release.open(QIODevice::WriteOnly)); release.close();
+        auto fixtureState = [&] {
+            QString detail;
+            for (const auto& name : {"management-phase", "management-error"}) {
+                QFile file(hostPath+name);
+                if (file.open(QIODevice::ReadOnly)) detail += QString::fromLatin1(name)+"="+QString::fromUtf8(file.readAll())+"; ";
+            }
+            return detail;
+        };
         QTRY_VERIFY2_WITH_TIMEOUT(QFile::exists(hostPath+"management-ready"),
-            qPrintable(QString("Management fixture did not start; gateTimedOut=%1; hostRunning=%2; status=%3")
-                .arg(QFile::exists(hostPath+"management-gate-timed-out")).arg(host.running()).arg(host.status())), 5000);
+            qPrintable(QString("Management fixture did not start; gateTimedOut=%1; hostRunning=%2; %3")
+                .arg(QFile::exists(hostPath+"management-gate-timed-out")).arg(host.running()).arg(fixtureState())), 5000);
         QVERIFY(!QFile::exists(hostPath+"management-gate-timed-out"));
         inspectManagement();
         QTRY_VERIFY_WITH_TIMEOUT(managementFinished, 5000);
