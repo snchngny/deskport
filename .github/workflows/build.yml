@@ -55,6 +55,9 @@ jobs:
           nix develop -c python3 tests/test-clipboard-demand.py
       - name: Build
         run: bash scripts/build.sh build --target linux-nix --run ci --min-free-gib 5
+      - name: Show sanitized build errors
+        if: failure()
+        run: python3 scripts/export-build-errors.py "$HOME/mygit/build/deskport"
       - name: Linux receiving keyboard identity
         run: |
           export TMPDIR="$(bash scripts/build-paths.sh checkout)/runs.noindex/ci-keyboard-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}/linux-nix/tests"
