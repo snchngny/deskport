@@ -1456,7 +1456,9 @@ private slots:
         QCOMPARE(management["code"].toString(), QString("unavailable"));
         QFile release(hostPath+"management-release");
         QVERIFY(release.open(QIODevice::WriteOnly)); release.close();
-        QTRY_VERIFY_WITH_TIMEOUT(QFile::exists(hostPath+"management-ready"), 5000);
+        QTRY_VERIFY2_WITH_TIMEOUT(QFile::exists(hostPath+"management-ready"),
+            qPrintable(QString("Management fixture did not start; gateTimedOut=%1; hostRunning=%2; status=%3")
+                .arg(QFile::exists(hostPath+"management-gate-timed-out")).arg(host.running()).arg(host.status())), 5000);
         QVERIFY(!QFile::exists(hostPath+"management-gate-timed-out"));
         inspectManagement();
         QTRY_VERIFY_WITH_TIMEOUT(managementFinished, 5000);

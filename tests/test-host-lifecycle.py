@@ -87,7 +87,10 @@ if "--creds" in sys.argv:
     (state / "auth-started").touch()
     if mode == "auth-fail": sys.exit(3)
     if mode == "auth-gated":
-        deadline = time.monotonic() + 4
+        # The test probes an intentionally absent management endpoint before
+        # opening this gate. Leave room for Qt's ten-second transfer deadline
+        # and native TLS initialization; the coordinator still releases it.
+        deadline = time.monotonic() + 30
         while not (state / "auth-release").exists():
             if time.monotonic() >= deadline:
                 (state / "auth-gate-timed-out").touch()
