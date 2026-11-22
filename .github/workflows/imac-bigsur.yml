@@ -83,6 +83,8 @@ jobs:
         with:
           submodules: recursive
           persist-credentials: false
+      - name: Big Sur runtime regression checks
+        run: python3 tests/test-macos-legacy.py
       - name: Install native build tools and compatible Qt
         run: |
           brew install cmake ninja pkgconf nasm
