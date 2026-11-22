@@ -65,6 +65,80 @@ private:
 class PeerBinding : public QObject {
     Q_OBJECT
 private slots:
+    void selectedExistingDisplayKeepsAdmissionWithoutResize_data() {
+        QTest::addColumn<int>("capability");
+        QTest::addColumn<bool>("approved");
+        QTest::addColumn<bool>("topology");
+        QTest::addColumn<int>("policy");
+        QTest::addColumn<bool>("accepted");
+        QTest::addColumn<QString>("code");
+        QTest::newRow("existing-screen") << 0 << true << true << 0 << true << QString();
+        QTest::newRow("existing-cannot-extend") << 0 << true << true << 2 << false << QString("policy-unsupported");
+        QTest::newRow("denied") << 0 << false << true << 0 << false << QString("unauthorized");
+        QTest::newRow("missing-topology") << 0 << true << false << 0 << false << QString("topology-unsupported");
+        QTest::newRow("missing-capability") << -1 << true << true << 0 << false << QString("topology-unsupported");
+        QTest::newRow("invalid-capability") << 2 << true << true << 0 << false << QString("topology-unsupported");
+    }
+    void selectedExistingDisplayKeepsAdmissionWithoutResize() {
+        QFETCH(int, capability); QFETCH(bool, approved); QFETCH(bool, topology);
+        QFETCH(int, policy); QFETCH(bool, accepted); QFETCH(QString, code);
+        const auto aCert = credential("TEST_CERT_A"), bCert = credential("TEST_CERT_B");
+        ScriptedBindingHost server(bCert, credential("TEST_KEY_B"));
+        QVERIFY(server.listen(QHostAddress::LocalHost, 0));
+        QTimer protocol; bool helloSent = false; int cursor = 0;
+        connect(&protocol, &QTimer::timeout, this, [&] {
+            if (!server.socket || !server.socket->isEncrypted()) return;
+            if (!helloSent) {
+                QJsonObject meta{{"sessionTakeover", DP_SESSION_TAKEOVER_VERSION},
+                                 {"sessionTopology", topology ? DP_SESSION_TOPOLOGY_VERSION : 0},
+                                 {"sessionLifecycle", DP_SESSION_LIFECYCLE_VERSION}};
+                if (capability >= 0) meta["adaptiveDisplay"] = capability;
+                server.send({{"type", "hello"}, {"meta", meta}}); helloSent = true;
+            }
+            while (cursor < server.messages.size()) {
+                const auto type = server.messages[cursor++]["type"].toString();
+                if (type == DP_MESSAGE_SESSION_STATUS) {
+                    if (approved) server.send({{"type", DP_MESSAGE_SESSION_STATE}, {"busy", false}, {"admitted", true}, {"resumeToken", "fixture-lease"}});
+                    else server.send({{"type", DP_MESSAGE_SESSION_RESULT}, {"admitted", false}, {"code", "unauthorized"}});
+                } else if (type == DP_MESSAGE_DISPLAY_PING) server.send({{"type", DP_MESSAGE_DISPLAY_PONG}});
+            }
+        });
+        protocol.start(1);
+        {
+            AdaptiveDisplay channel("127.0.0.1", server.serverPort(), QSslCertificate(bCert),
+                                    aCert, credential("TEST_KEY_A"), policy);
+            auto resize = [&](QSize size) {
+                auto result = std::async(std::launch::async, [&] { return channel.resize(size, 1); });
+                while (result.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready) QTest::qWait(10);
+                return result.get();
+            };
+            QCOMPARE(resize(QSize(1280, 720)), accepted);
+            QCOMPARE(channel.topologyError(), code);
+            if (accepted) {
+                QVERIFY(channel.admissionRequired());
+                QCOMPARE(channel.resumeToken(), QString("fixture-lease"));
+                QCOMPARE(channel.negotiatedSize(), QSize(1280, 720));
+                QVERIFY(!channel.warning().isEmpty());
+                QVERIFY(resize(QSize(1920, 1080)));
+                QCOMPARE(channel.negotiatedSize(), QSize(1920, 1080));
+                auto pingReceived = [&] {
+                    for (const auto& m : server.messages) if (m["type"] == DP_MESSAGE_DISPLAY_PING) return true;
+                    return false;
+                };
+                QTRY_VERIFY_WITH_TIMEOUT(pingReceived(), 7000);
+                QVERIFY(!channel.failed());
+            }
+            for (const auto& message : server.messages) QVERIFY(message["type"] != DP_MESSAGE_DISPLAY_RESIZE);
+        }
+        // Closing a fixed-screen viewer still releases its authenticated lease.
+        if (accepted) {
+            auto released = [&] {
+                for (const auto& m : server.messages) if (m["type"] == DP_MESSAGE_SESSION_RELEASE) return true;
+                return false;
+            };
+            QTRY_VERIFY_WITH_TIMEOUT(released(), 2000);
+        }
+    }
     void seamlessNegotiation_data() {
         QTest::addColumn<int>("mode");
         QTest::addColumn<bool>("availableAtHello");

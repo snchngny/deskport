@@ -165,11 +165,18 @@ void AdaptiveDisplay::run() {
     bool connected = SmallTcp::connectBlocking(socket, m_Address, m_Port, 4000) && socket.peerCertificate() == m_Peer;
     if (!connected) { QMutexLocker lock(&m_Mutex); if (m_TopologyError.isEmpty()) m_TopologyError = "unavailable"; }
     if (connected) SmallTcp::accepted(socket, m_Address, m_Port);
-    bool policySupported = false, videoPauseSupported = false;
+    bool policySupported = false, videoPauseSupported = false, resizeSupported = false;
     bool videoStateUnknown = !m_ResumeToken.isEmpty();
     if (connected) {
         const auto hello = receive();
-        connected = hello["type"].toString() == "hello" && hello["meta"].toObject()["adaptiveDisplay"].toInt() == 1;
+        const auto displayCapability = hello["meta"].toObject().value("adaptiveDisplay");
+        // Selecting an existing screen deliberately does not start a virtual
+        // display helper. Admission is still mandatory, but resizing that
+        // screen is neither necessary nor authorized by a stream-size choice.
+        connected = hello["type"].toString() == "hello" && displayCapability.isDouble() &&
+            (displayCapability.toDouble() == 0 || displayCapability.toDouble() == 1);
+        resizeSupported = connected && displayCapability.toInt() == 1;
+        if (!connected) { QMutexLocker lock(&m_Mutex); m_TopologyError = "topology-unsupported"; m_Retryable = false; }
         { QMutexLocker lock(&m_Mutex); m_Lifecycle = hello["meta"].toObject()["sessionLifecycle"].toInt() == DP_SESSION_LIFECYCLE_VERSION; }
         videoPauseSupported = hello["meta"].toObject()["videoPause"].toInt() == DP_VIDEO_PAUSE_VERSION;
         { QMutexLocker lock(&m_Mutex); m_RateSupported = hello["meta"].toObject()["videoRate"].toInt() == DP_VIDEO_RATE_VERSION; }
@@ -230,7 +237,8 @@ void AdaptiveDisplay::run() {
             }
             connected = connected && admitted;
         }
-        if (connected && (!DPDisplayPolicyValid(m_Policy) || (!policySupported && m_Policy != DP_DISPLAY_PRIMARY_MIRROR))) {
+        if (connected && (!DPDisplayPolicyValid(m_Policy) ||
+                ((!policySupported || !resizeSupported) && m_Policy != DP_DISPLAY_PRIMARY_MIRROR))) {
             QMutexLocker lock(&m_Mutex); m_TopologyError = "policy-unsupported";
             connected = false;
         }
@@ -248,6 +256,16 @@ void AdaptiveDisplay::run() {
         { QMutexLocker lock(&m_Mutex); pending = m_Pending; size = m_Size; scale = m_Scale; fullScreen = m_FullScreen; }
         if (pending) {
             size=selectedSize(size);scale=selectedScale(scale);
+            if (!resizeSupported) {
+                // This is the requested encoded stream size, not a claim that
+                // the host's physical display has changed. Keep its admitted
+                // control lease and heartbeat without sending a display write.
+                QMutexLocker lock(&m_Mutex);
+                m_Warning = tr("The selected host display keeps its resolution. Video may be scaled to the requested stream size.");
+                m_NegotiatedSize = size; m_Result = true; m_Complete = true; m_Pending = false;
+                m_Wake.wakeAll();
+                continue;
+            }
             QJsonObject request{{"type", DP_MESSAGE_DISPLAY_RESIZE}, {"seq", ++sequence}, {"width", size.width()}, {"height", size.height()}, {"scale", scale}};
             if (policySupported) request["displayPolicy"] = m_Policy;
             if (windowSupported) { request["clientWindow"] = DP_CLIENT_WINDOW_VERSION; request["clientFullScreen"] = fullScreen; }

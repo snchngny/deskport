@@ -6,6 +6,18 @@
 - Pending: a complete Intel Big Sur host dependency build and package, all three platform build results, real-machine display/input checks, and final distribution status. Compilation is not low-latency acceptance.
 - Excluded: display stitching. No existing credentials, installed applications, or display calibration are migrated automatically.
 
+## Existing selected-screen admission — 2026-11-22
+
+An existing selected display does not run the virtual-display helper. Receivers
+must still verify the pinned peer, topology and session admission when the host
+explicitly advertises `adaptiveDisplay=0`, while leaving the display unchanged.
+Only the selected-screen policy is supported on that path; extending or replacing
+the desktop still requires the adaptive helper. The requested video dimensions
+may scale the captured screen and do not prove that its native mode changed.
+Loopback TLS regressions cover admission denial, unsupported policies, missing
+capabilities, heartbeat/release and the existing adaptive-display path. Native
+streaming and latency acceptance remain pending until the repaired client runs.
+
 ## Mouse latency optimization — 2026-11-21
 
 Batch 1 (implemented):

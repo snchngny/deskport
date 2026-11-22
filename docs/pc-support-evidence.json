@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "review_date": "2026-11-19",
-  "baseline_source_sha": "e96192d0e5aebd85b0d24dbd5f61e62c95d522cd",
+  "review_date": "2026-11-22",
+  "baseline_source_sha": "f3ae2b6bb2ea86282e1ad7fb559038d6cf33cf10",
   "baseline_core_sha": "49c13048b9e91b8638335a87d20cf9c545039b6d",
   "evidence": [
     {
@@ -418,6 +418,26 @@
       "path": ".github/workflows/core.yml",
       "job": "display",
       "runner": "macos-15"
+    },
+    {
+      "path": ".github/workflows/desktop-candidates.yml",
+      "job": "apple-silicon",
+      "runner": "macos-26"
+    },
+    {
+      "path": ".github/workflows/desktop-candidates.yml",
+      "job": "windows",
+      "runner": "ubuntu-24.04"
+    },
+    {
+      "path": ".github/workflows/imac-bigsur.yml",
+      "job": "client",
+      "runner": "macos-15-intel"
+    },
+    {
+      "path": ".github/workflows/imac-bigsur.yml",
+      "job": "full-package",
+      "runner": "macos-15-intel"
     },
     {
       "path": ".github/workflows/windows-branch.yml",

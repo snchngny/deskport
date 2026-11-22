@@ -94,6 +94,13 @@ jobs:
           echo "DESKPORT_QT_BIN=$RUNNER_TEMP/qt/6.5.3/macos/bin" >> "$GITHUB_ENV"
           echo "DESKPORT_QT_LIBRARY_PATH=$RUNNER_TEMP/qt/6.5.3/macos/lib" >> "$GITHUB_ENV"
           echo "DESKPORT_LEGACY_DEPS_ROOT=$RUNNER_TEMP/deskport-build/dependencies.noindex/macos-intel-bigsur" >> "$GITHUB_ENV"
+      - name: Existing-screen admission and adaptive display regressions
+        env:
+          DESKPORT_BUILD_ROOT: ${{ runner.temp }}/deskport-build
+          DESKPORT_TEST_CASE: fixed-screen-admission
+        run: |
+          export DESKPORT_QMAKE="$DESKPORT_QT_BIN/qmake"
+          python3 tests/test-host-lifecycle.py --binding -- selectedExistingDisplayKeepsAdmissionWithoutResize adaptiveDisplayRequiresPinnedApprovedExclusiveController
       - uses: actions/cache/restore@5a3ec84eff668545956fd18022155c47e93e2684
         id: dependencies
         with:

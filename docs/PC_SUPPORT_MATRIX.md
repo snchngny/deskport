@@ -1,6 +1,6 @@
 # PC implementation and acceptance matrix
 
-Reviewed 2026-11-19 from desktop base `e96192d0e5aebd85b0d24dbd5f61e62c95d522cd` and pinned core
+Reviewed 2026-11-22 from desktop base `f3ae2b6bb2ea86282e1ad7fb559038d6cf33cf10` and pinned core
 `49c13048b9e91b8638335a87d20cf9c545039b6d`. This source review covers the desktop portable adapters.
 Historical package and hardware results retain the exact source identities below.
 
