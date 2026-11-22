@@ -106,9 +106,17 @@ QVariantList HostManager::captureSources() const {
         }
     }
 #elif defined(Q_OS_WIN)
-    for (auto* screen : QGuiApplication::screens()) {
-        const auto label = screen->name() + (screen == QGuiApplication::primaryScreen() ? tr(" · Main") : tr(" · Extended"));
-        sources.append(QVariantMap{{"id", QStringLiteral("win:") + screen->name()}, {"label", label}});
+    // Qt may expose a friendly monitor name, while Sunshine's Windows capture
+    // adapter consumes a GDI device name. Enumerate the same native identity.
+    DISPLAY_DEVICEW device{};
+    device.cb = sizeof(device);
+    for (DWORD index = 0; EnumDisplayDevicesW(nullptr, index, &device, 0); ++index) {
+        if (!(device.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) ||
+            (device.StateFlags & DISPLAY_DEVICE_MIRRORING_DRIVER)) continue;
+        const auto name = QString::fromWCharArray(device.DeviceName);
+        const auto label = QString::fromWCharArray(device.DeviceString) + QStringLiteral(" (") + name + QLatin1Char(')') +
+            (device.StateFlags & DISPLAY_DEVICE_PRIMARY_DEVICE ? tr(" · Main") : tr(" · Extended"));
+        sources.append(QVariantMap{{"id", QStringLiteral("win:") + name}, {"label", label}});
     }
 #endif
     return sources;

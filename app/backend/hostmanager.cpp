@@ -881,7 +881,23 @@ void HostManager::startServer(int displayId) {
     config.write("dd_configuration_option = disabled\n");
     // The helper owns mode restoration; Sunshine must not race it.
     if (m_CaptureSource.startsWith(QStringLiteral("win:"))) {
-        config.write(QString("output_name = %1\n").arg(m_CaptureSource.mid(4)).toUtf8());
+        const auto output = m_CaptureSource.mid(4);
+        // The host overlay reads this mapping for every new capture session,
+        // including existing-screen sharing without the display helper. Never
+        // leave a previous virtual/primary mapping active for a new selection.
+        const auto prefix = QStringLiteral("\\\\.\\DISPLAY");
+        if (!output.startsWith(prefix) ||
+            !QRegularExpression(QStringLiteral("^[0-9]{1,10}$")).match(output.mid(prefix.size())).hasMatch()) {
+            beginStop(tr("The selected display is disconnected. Select a display before sharing.")); return;
+        }
+        QSaveFile capture(m_Directory + "/windows-capture-output");
+        const auto bytes = output.toUtf8() + '\n';
+        if (!capture.open(QIODevice::WriteOnly) ||
+            !capture.setPermissions(QFile::ReadOwner | QFile::WriteOwner) ||
+            capture.write(bytes) != bytes.size() || !capture.commit()) {
+            beginStop(tr("Cannot write host configuration")); return;
+        }
+        config.write(QString("output_name = %1\n").arg(output).toUtf8());
     } else {
     QFile displayState(m_Directory + "/windows-display.json");
     if (displayState.open(QIODevice::ReadOnly)) {
