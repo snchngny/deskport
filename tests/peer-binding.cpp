@@ -100,7 +100,7 @@ private slots:
                 if (type == DP_MESSAGE_SESSION_STATUS) {
                     if (approved) server.send({{"type", DP_MESSAGE_SESSION_STATE}, {"busy", false}, {"admitted", true}, {"resumeToken", "fixture-lease"}});
                     else server.send({{"type", DP_MESSAGE_SESSION_RESULT}, {"admitted", false}, {"code", "unauthorized"}});
-                } else if (type == DP_MESSAGE_DISPLAY_PING) server.send({{"type", DP_MESSAGE_DISPLAY_PONG}});
+                } else if (type == DP_MESSAGE_DISPLAY_PING) server.send({{"type", "error"}, {"error", "No virtual display helper"}});
             }
         });
         protocol.start(1);
@@ -121,14 +121,18 @@ private slots:
                 QVERIFY(!channel.warning().isEmpty());
                 QVERIFY(resize(QSize(1920, 1080)));
                 QCOMPARE(channel.negotiatedSize(), QSize(1920, 1080));
-                auto pingReceived = [&] {
-                    for (const auto& m : server.messages) if (m["type"] == DP_MESSAGE_DISPLAY_PING) return true;
-                    return false;
+                auto sessionRefreshed = [&] {
+                    int count = 0;
+                    for (const auto& m : server.messages) if (m["type"] == DP_MESSAGE_SESSION_STATUS) ++count;
+                    return count >= 2;
                 };
-                QTRY_VERIFY_WITH_TIMEOUT(pingReceived(), 7000);
+                QTRY_VERIFY_WITH_TIMEOUT(sessionRefreshed(), 7000);
                 QVERIFY(!channel.failed());
             }
-            for (const auto& message : server.messages) QVERIFY(message["type"] != DP_MESSAGE_DISPLAY_RESIZE);
+            for (const auto& message : server.messages) {
+                QVERIFY(message["type"] != DP_MESSAGE_DISPLAY_RESIZE);
+                QVERIFY(message["type"] != DP_MESSAGE_DISPLAY_PING);
+            }
         }
         // Closing a fixed-screen viewer still releases its authenticated lease.
         if (accepted) {

@@ -166,6 +166,7 @@ void AdaptiveDisplay::run() {
     if (!connected) { QMutexLocker lock(&m_Mutex); if (m_TopologyError.isEmpty()) m_TopologyError = "unavailable"; }
     if (connected) SmallTcp::accepted(socket, m_Address, m_Port);
     bool policySupported = false, videoPauseSupported = false, resizeSupported = false;
+    QJsonObject admissionQuery;
     bool videoStateUnknown = !m_ResumeToken.isEmpty();
     if (connected) {
         const auto hello = receive();
@@ -202,6 +203,7 @@ void AdaptiveDisplay::run() {
             if (videoPauseSupported) query["videoPause"] = DP_VIDEO_PAUSE_VERSION;
             if ([&] { QMutexLocker lock(&m_Mutex); return m_RateSupported; }()) query["videoRate"] = DP_VIDEO_RATE_VERSION;
             if (m_Lifecycle) { query["sessionLifecycle"] = DP_SESSION_LIFECYCLE_VERSION; query["resumeToken"] = m_ResumeToken; }
+            admissionQuery = query;
             send(query);
             auto state = receive();
             bool admitted = state["type"].toString() == DP_MESSAGE_SESSION_STATE && state["admitted"].toBool();
@@ -356,8 +358,17 @@ void AdaptiveDisplay::run() {
             if (!connected) { QMutexLocker lock(&m_Mutex); m_Retryable = false; }
             heartbeat.restart();
         } else if (heartbeat.elapsed() >= 5000) {
-            send({{"type", DP_MESSAGE_DISPLAY_PING}});
-            connected = receive()["type"].toString() == DP_MESSAGE_DISPLAY_PONG;
+            if (resizeSupported) {
+                send({{"type", DP_MESSAGE_DISPLAY_PING}});
+                connected = receive()["type"].toString() == DP_MESSAGE_DISPLAY_PONG;
+            } else {
+                // Older hosts require a live virtual helper for DISPLAY_PING.
+                // Refresh this same admitted session instead; a new challenge
+                // or lost ownership ends the viewer and is never auto-approved.
+                send(admissionQuery);
+                const auto reply = receive();
+                connected = reply["type"].toString() == DP_MESSAGE_SESSION_STATE && reply["admitted"].toBool();
+            }
             heartbeat.restart();
         } else {
             // Read unsolicited termination promptly, including buffered TLS data
