@@ -8,8 +8,13 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          submodules: recursive
+          persist-credentials: false
       - name: Native test dependencies
-        run: sudo apt-get update && sudo apt-get install --yes qt6-base-dev libssl-dev g++ make
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes qt6-base-dev qt6-declarative-dev qt6-tools-dev-tools libssl-dev g++ make qml6-module-qtquick qml6-module-qtquick-controls qml6-module-qtquick-layouts qml6-module-qtquick-window qml6-module-qtqml-workerscript qml6-module-qtquick-templates
       - name: Preserve identity on restart and reject damaged settings
         run: |
           work="$RUNNER_TEMP/identity-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
@@ -18,3 +23,12 @@ jobs:
           qmake6 "$GITHUB_WORKSPACE/tests/identity-persistence.pro"
           make -j2
           ./identity-persistence-test
+      - name: Fork update channel regressions
+        env:
+          DESKPORT_QMAKE: qmake6
+        run: python3 tests/test-update-checker.py
+      - name: Independent bandwidth and pacing controls
+        env:
+          DESKPORT_QMAKE: qmake6
+          DESKPORT_LRELEASE: /usr/lib/qt6/bin/lrelease
+        run: python3 tests/test-host-lifecycle.py --ui -- deviceSettingsAreSeparate

@@ -255,7 +255,7 @@ UiPage {
             qsTr("DeskPort is free software under the GNU General Public License, version 3 or later. It is derived from Moonlight Qt and includes a modified Sunshine host."),
             qsTr("The shared DeskPort catalog is available under the MIT License. Operating system icons are dedicated to the public domain (CC0 1.0)."),
             qsTr("Qt, FFmpeg, SDL and the other bundled libraries keep their own licenses. Their notices ship with each package."),
-            qsTr("Source code and modifications: %1").arg("https://github.com/keithxc/deskport")
+            qsTr("Source code and modifications: %1").arg("https://github.com/snchngny/deskport")
         ]
     }
 }

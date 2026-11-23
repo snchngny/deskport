@@ -2807,7 +2807,7 @@ void Session::execInternal()
                                    m_Window, m_ActiveVideoFormat, m_ActiveVideoWidth,
                                    m_ActiveVideoHeight, m_ActiveVideoFrameRate,
                                    enableVsync,
-                                   enableVsync && (m_NegotiatedMediaSettings.smartStreaming || m_Preferences->framePacing),
+                                   enableVsync && m_Preferences->framePacing,
                                    false,
                                    s_ActiveSession->m_VideoDecoder)) {
                     SDL_AtomicUnlock(&m_DecoderLock);

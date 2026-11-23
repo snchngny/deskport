@@ -85,7 +85,7 @@ ColumnLayout {
             objectName: "framePacingSwitch"
             iconSource: "qrc:/res/ui/stats.svg"
             title: qsTr("Smooth frame pacing")
-            switchable: true; on: preferences.smartStreaming || preferences.framePacing; enabled: !preferences.smartStreaming
+            switchable: true; on: preferences.framePacing
             onSwitched: function(value) { preferences.framePacing=value; save() }
         }
         UiRow {

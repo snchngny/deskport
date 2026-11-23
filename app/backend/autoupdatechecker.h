@@ -13,7 +13,7 @@ class AutoUpdateChecker : public QObject
 public:
     explicit AutoUpdateChecker(QObject *parent = nullptr);
     Q_INVOKABLE void start();
-    // Pure parser shared with isolated release-channel tests.
+    // Pure parser for the fork's published, complete iMac compatibility releases.
     static QString evaluate(const QByteArray& json, const QString& current,
                             QString& version, QString& notes, QString& date, QString& url);
 signals:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the stable release channel without network or personal hosts."""
+"""Validate the fork compatibility channel without network or personal hosts."""
 
 # Guard direct test/build entrypoints before local imports or output creation.
 import sys as _storage_sys
@@ -16,7 +16,7 @@ import tempfile
 root = Path(__file__).resolve().parents[1]
 with tempfile.TemporaryDirectory(prefix="deskport-updates-") as temporary:
     work = Path(temporary)
-    (work / "version.h").write_text('#define VERSION_STR "0.4.5"\n')
+    (work / "version.h").write_text('#define VERSION_STR "2.9.0-imac.4"\n')
     (work / "test.pro").write_text(f'''QT += core network testlib
 CONFIG += console c++17 testcase
 CONFIG -= app_bundle

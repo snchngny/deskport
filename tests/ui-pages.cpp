@@ -1002,6 +1002,16 @@ QtObject {
         QVERIFY(!prefs->property("smartStreaming").toBool());
         QVERIFY(QMetaObject::invokeMethod(mode,"activated",Q_ARG(int,0)));
         QVERIFY(prefs->property("smartStreaming").toBool());
+        // Automatic bandwidth must not force a latency-increasing pacing queue.
+        auto pacing = page->findChild<QObject*>("framePacingSwitch"); QVERIFY(pacing);
+        QVERIFY(pacing->property("enabled").toBool());
+        QVERIFY(!pacing->property("on").toBool());
+        QVERIFY(QMetaObject::invokeMethod(pacing,"switched",Q_ARG(bool,true)));
+        QVERIFY(prefs->property("framePacing").toBool());
+        QVERIFY(prefs->property("smartStreaming").toBool());
+        QVERIFY(QMetaObject::invokeMethod(pacing,"switched",Q_ARG(bool,false)));
+        QVERIFY(!prefs->property("framePacing").toBool());
+        QVERIFY(prefs->property("smartStreaming").toBool());
         QCOMPARE(prefs->property("uiTheme").toInt(),0);
         auto policy=page->findChild<QObject*>("deviceDisplayPolicy"); QVERIFY(policy);
         QCOMPARE(policy->property("currentIndex").toInt(),0);

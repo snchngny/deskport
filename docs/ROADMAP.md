@@ -1,3 +1,13 @@
+## Compatibility updates and explicit frame pacing — 2026-11-23
+
+The iMac fork follows only numbered `snchngny/deskport` compatibility releases,
+including previews. Drafts, upstream releases, foreign links and incomplete
+three-platform uploads are ignored. Updates open the fork release page for manual
+installation; no automatic replacement or credential migration is added.
+Automatic bandwidth no longer forces frame pacing: the explicit per-device switch
+controls it, while VSync and existing preferences remain respected. Regression
+checks and native packages are pending; no new latency improvement is claimed.
+
 ## Saved client identity preservation — 2026-11-23
 
 The client must not silently replace saved credentials when settings are incomplete,

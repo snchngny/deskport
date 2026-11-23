@@ -738,10 +738,11 @@ ApplicationWindow {
         title: qsTr("DeskPort updates")
         contentItem: ColumnLayout {
             spacing: 12
+            Label { text: "snchngny/deskport · iMac"; color: ui.muted }
             Label {
                 text: AutoUpdateChecker.status === "checking" ? qsTr("Checking for updates…")
                     : AutoUpdateChecker.status === "available" ? qsTr("New version: %1").arg(AutoUpdateChecker.latestVersion)
-                    : AutoUpdateChecker.status === "current" ? qsTr("No newer stable release is available.")
+                    : AutoUpdateChecker.status === "current" ? qsTr("DeskPort updates") + " ✓"
                     : qsTr("Could not check for updates. Please try again.")
                 color: ui.text; wrapMode: Text.WordWrap; Layout.fillWidth: true
             }
@@ -880,7 +881,7 @@ ApplicationWindow {
         standardButtons: Dialog.Ok | Dialog.Cancel
         text: qsTr("This version of Moonlight isn't optimized for your PC. Please download the '%1' version of Moonlight for the best streaming performance.").arg(SystemProperties.friendlyNativeArchName)
         onAccepted: {
-            Qt.openUrlExternally("https://github.com/keithxc/deskport/releases");
+            Qt.openUrlExternally("https://github.com/snchngny/deskport/releases");
         }
     }
 
