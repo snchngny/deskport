@@ -1,3 +1,14 @@
+## Persistent local macOS signing — 2026-11-23
+
+The iMac now has one persistent signing identity in its user keychain. A local
+staging helper re-signs verified packages without shipping private keys or
+claiming Developer ID/notarization. Old Applications-folder copies were retained
+outside Applications and unregistered individually to avoid stale application
+attribution. In the native imac.3-to-imac.4 update test, both Screen Recording and
+Accessibility remained allowed without another grant, sharing restarted, and the
+running binary matched the signed new stage. Public preview packages remain
+ad-hoc; local updates must continue through the same identity and staging route.
+
 ## Compatibility updates and explicit frame pacing — 2026-11-23
 
 The iMac fork follows only numbered `snchngny/deskport` compatibility releases,
