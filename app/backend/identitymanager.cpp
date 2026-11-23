@@ -105,6 +105,10 @@ void IdentityManager::createCredentials(QSettings& settings)
 
     settings.setValue(SER_CERT, m_CachedPemCert);
     settings.setValue(SER_KEY, m_CachedPrivateKey);
+    settings.sync();
+    if (settings.status() != QSettings::NoError) {
+        qFatal("Cannot persist the new DeskPort identity. Repair settings access before pairing.");
+    }
 
     qInfo() << "Wrote new identity credentials to settings";
 }
@@ -116,17 +120,20 @@ IdentityManager::IdentityManager()
     m_CachedPemCert = settings.value(SER_CERT).toByteArray();
     m_CachedPrivateKey = settings.value(SER_KEY).toByteArray();
 
-    if (m_CachedPemCert.isEmpty() || m_CachedPrivateKey.isEmpty()) {
+    if (settings.status() != QSettings::NoError) {
+        qFatal("Cannot read saved DeskPort identity. Existing credentials were not replaced.");
+    }
+    const bool existingIdentity = settings.contains(SER_CERT) ||
+            settings.contains(SER_KEY) || settings.contains(SER_UNIQUEID);
+    if (!existingIdentity) {
         qInfo() << "No existing credentials found";
         createCredentials(settings);
     }
-    else if (getSslCertificate().isNull()) {
-        qWarning() << "Certificate is unreadable";
-        createCredentials(settings);
+    else if (m_CachedPemCert.isEmpty() || m_CachedPrivateKey.isEmpty()) {
+        qFatal("Saved DeskPort identity is incomplete. Existing credentials were not replaced; restore the original settings.");
     }
-    else if (getSslKey().isNull()) {
-        qWarning() << "Private key is unreadable";
-        createCredentials(settings);
+    else if (getSslCertificate().isNull() || getSslKey().isNull()) {
+        qFatal("Saved DeskPort identity cannot be decoded. Existing credentials were not replaced; check the TLS backend or restore the original settings.");
     }
 
     // We should have valid credentials now. If not, we're screwed
@@ -135,6 +142,20 @@ IdentityManager::IdentityManager()
     }
     if (getSslKey().isNull()) {
         qFatal("Private key is unreadable");
+    }
+    BIO* certBio = BIO_new_mem_buf(m_CachedPemCert.constData(), m_CachedPemCert.size());
+    THROW_BAD_ALLOC_IF_NULL(certBio);
+    X509* certificate = PEM_read_bio_X509(certBio, nullptr, nullptr, nullptr);
+    BIO_free(certBio);
+    BIO* keyBio = BIO_new_mem_buf(m_CachedPrivateKey.constData(), m_CachedPrivateKey.size());
+    THROW_BAD_ALLOC_IF_NULL(keyBio);
+    EVP_PKEY* key = PEM_read_bio_PrivateKey(keyBio, nullptr, nullptr, nullptr);
+    BIO_free(keyBio);
+    const bool matches = certificate && key && X509_check_private_key(certificate, key) == 1;
+    X509_free(certificate);
+    EVP_PKEY_free(key);
+    if (!matches) {
+        qFatal("Saved DeskPort certificate and private key do not match. Existing credentials were not replaced.");
     }
 }
 
@@ -159,6 +180,9 @@ IdentityManager::getSslKey()
 
         EVP_PKEY* pk = PEM_read_bio_PrivateKey(bio, nullptr, nullptr, nullptr);
         BIO_free(bio);
+        if (pk == nullptr) {
+            return QSslKey();
+        }
 
         bio = BIO_new(BIO_s_mem());
         THROW_BAD_ALLOC_IF_NULL(bio);

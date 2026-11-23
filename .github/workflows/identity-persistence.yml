@@ -1,0 +1,20 @@
+name: Identity persistence
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  identity:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Native test dependencies
+        run: sudo apt-get update && sudo apt-get install --yes qt6-base-dev libssl-dev g++ make
+      - name: Preserve identity on restart and reject damaged settings
+        run: |
+          work="$RUNNER_TEMP/identity-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          mkdir "$work"
+          cd "$work"
+          qmake6 "$GITHUB_WORKSPACE/tests/identity-persistence.pro"
+          make -j2
+          ./identity-persistence-test

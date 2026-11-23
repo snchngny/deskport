@@ -1,3 +1,13 @@
+## Saved client identity preservation — 2026-11-23
+
+The client must not silently replace saved credentials when settings are incomplete,
+undecodable, or contain a certificate/key mismatch. Such failures now stop startup
+without overwriting the original identity. Fresh installations still generate a
+new identity and must persist it before pairing. The isolated native regression
+fixture covers restart stability and eight damaged-settings cases. Native CI and
+upgraded Windows/macOS reconnection acceptance are pending; this does not restore
+credentials already replaced by an earlier version.
+
 ## Compatibility fork checkpoint — 2026-11-22
 
 - Runtime acceptance: Intel Big Sur receives Windows video after a process-local short-TMPDIR workaround. Normal launch needs shorter session IPC names; the macOS host also needs the pre-macOS-12 IOKit default-port symbol during display enumeration. Both fixes await a rebuilt package and bidirectional runtime acceptance. Receiver network RTT is not end-to-end input/display latency.
