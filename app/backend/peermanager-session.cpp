@@ -75,7 +75,10 @@ void PeerManager::sessionRequestVerified(Link* link, const QJsonObject& message)
         !peer["ready"].toBool() || !peer["granted"].toBool() || m_Revoking == link->fingerprint) {
         sessionError(link, "unauthorized"); return;
     }
-    if (!m_Host->running()) { sessionError(link, "unavailable"); return; }
+    if (!m_Host->running()) {
+        Diagnostics::instance().record("host", "DeskPort failure stage=session-admission code=host-not-running");
+        sessionError(link, "unavailable"); return;
+    }
     const bool takeover = message["type"].toString() == DP_MESSAGE_SESSION_TAKEOVER;
     if ((!takeover && message["sessionTakeover"].toInt() != DP_SESSION_TAKEOVER_VERSION) ||
         (takeover && !link->sessionOptIn)) { sessionError(link, "unauthorized"); return; }
@@ -139,6 +142,7 @@ void PeerManager::sessionRequestVerified(Link* link, const QJsonObject& message)
         if (!alive || alive->ended) return;
         auto link = alive.data();
         if (!result["status"].toBool() || result["snapshot"].toString().isEmpty() || !result["sessions"].isDouble()) {
+            Diagnostics::instance().record("host", "DeskPort failure stage=session-admission code=management-snapshot");
             sessionError(link, "unavailable"); return;
         }
         if (m_SessionLink || m_DisplayLink || m_ClipboardLink || result["sessions"].toInt() > 0 || result["reserved"].toBool()) {
@@ -161,6 +165,7 @@ void PeerManager::acquireSession(Link* link, const QString& snapshot, bool takeo
         {"lease", lease}, {"snapshot", snapshot}, {"takeover", takeover}}, this,
         [this, alive, lease, takeover](QJsonObject result) {
         if (!result["status"].toBool()) {
+            Diagnostics::instance().record("host", "DeskPort failure stage=session-admission code=management-acquire");
             m_SessionOperation = false;
             if (alive && !alive->ended) sessionError(alive, result["code"].toString("unavailable"));
             return;
@@ -181,6 +186,7 @@ void PeerManager::acquireSession(Link* link, const QString& snapshot, bool takeo
             m_SessionOperation = false;
             const auto peer = alive ? m_Peers.value(alive->fingerprint).toObject() : QJsonObject();
             if (!restored || !alive || alive->ended || !peer["ready"].toBool() || !peer["granted"].toBool() || m_Revoking == alive->fingerprint) {
+                Diagnostics::instance().record("host", "DeskPort failure stage=session-admission code=display-release");
                 m_Host->sessionControl({{"action", "release"}, {"lease", lease}}, this, [](QJsonObject) {});
                 if (alive && !alive->ended) sessionError(alive, "unavailable");
                 return;

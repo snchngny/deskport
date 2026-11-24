@@ -19,7 +19,7 @@
 namespace {
 const QStringList sources {"client", "host", "display"};
 const QStringList stages {"decoder-setup", "continuation", "mode-request", "mode-ready", "mode-failed", "observed", "stop-begin", "viewer-geometry-ready", "probe-begin", "probe-end", "stop-end", "resume-request", "resume-response", "initialize-begin", "input-init-begin", "input-init-end", "first-render-submit", "snapshot-ready", "snapshot-skipped-hdr", "snapshot-transfer-failed", "snapshot-scale-failed"};
-const QStringList failureStages {"session-prepare", "virtual-display", "stream-launch", "capture", "encoder"};
+const QStringList failureStages {"session-prepare", "session-admission", "host-management", "virtual-display", "stream-launch", "capture", "encoder"};
 const QStringList failureCodes {"cancelled", "unauthorized", "busy", "stale", "cycle", "topology-unsupported", "topology-unavailable", "topology-invalid", "unavailable", "timeout", "display-failed", "policy-unsupported", "capture-encoder-failed", "capture-permission", "encoder-unavailable"};
 const QStringList runtimeBackends {"kwin", "portal", "wlr", "screen-capture-kit", "vaapi", "videotoolbox", "software", "nvenc", "amdvce", "quicksync"};
 const QStringList navigationStages {"devices-request", "devices-ready", "devices-frame", "event-loop-delay"};
@@ -142,7 +142,11 @@ QJsonObject Diagnostics::project(const QString& message) {
         if (lower.contains(QLatin1String(word))) return {};
     static const QRegularExpression failure("DeskPort failure stage=([a-z-]+) code=([a-z-]+)\\s*$");
     auto structured = failure.match(message);
-    if (structured.hasMatch() && failureStages.contains(structured.captured(1)) && failureCodes.contains(structured.captured(2)))
+    static const QStringList managementCodes {"host-not-running", "host-certificate-missing", "host-generation-changed", "management-auth", "management-certificate", "management-network", "management-schema", "management-snapshot", "management-acquire", "display-release"};
+    const bool management = structured.hasMatch() &&
+        (structured.captured(1) == "host-management" || structured.captured(1) == "session-admission") &&
+        managementCodes.contains(structured.captured(2));
+    if (structured.hasMatch() && failureStages.contains(structured.captured(1)) && (failureCodes.contains(structured.captured(2)) || management))
         return {{"event", "failure"}, {"stage", structured.captured(1)}, {"code", structured.captured(2)}};
     static const QRegularExpression runtime("DeskPort runtime kind=(capture|encoder) backend=([a-z-]+)\\s*$");
     structured = runtime.match(message);

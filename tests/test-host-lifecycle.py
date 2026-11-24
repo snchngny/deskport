@@ -145,9 +145,18 @@ if (state / "credentials/cert.pem").exists():
                 self.send_response(200); self.send_header("Content-Length", str(len(data))); self.end_headers(); self.wfile.write(data)
                 return
             current = json.loads(session_file.read_text())
+            get_faults = state / "management-get-faults"
+            if self.command == "GET" and get_faults.exists():
+                remaining = int(get_faults.read_text())
+                count = state / "management-get-count"
+                count.write_text(str(int(count.read_text()) + 1 if count.exists() else 1))
+                if remaining:
+                    get_faults.write_text(str(remaining - 1))
+                    self.send_error(503); return
             def snapshot(): return str(current["generation"]) + ":" + str(current["sessions"])
             output = dict(status=True, version=1)
             if self.command == "POST":
+                current["postCalls"] = current.get("postCalls", 0) + 1
                 body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
                 if body.get("action") == "video":
                     output["status"] = bool(current["lease"]) and current["lease"] == body.get("lease") and current["sessions"] <= 1

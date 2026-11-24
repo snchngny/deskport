@@ -160,7 +160,7 @@ signals:
 private:
     void sendTrustUpdate(const QJsonObject& body, qint64 deadline = 0);
     void managementRequest(const QString& path, const QJsonObject& body, QObject* context,
-                           std::function<void(QJsonObject)> completion);
+                           std::function<void(QJsonObject)> completion, int attempt = 0);
     QString unattendedDirectory() const;
     bool unattendedMarker(const QString& name, bool present);
     QString m_UnattendedError;

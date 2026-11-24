@@ -1030,15 +1030,17 @@ void HostManager::browserControl(const QJsonObject& body, QObject* context,
 }
 
 void HostManager::managementRequest(const QString& path, const QJsonObject& body, QObject* context,
-                                    std::function<void(QJsonObject)> completion) {
+                                    std::function<void(QJsonObject)> completion, int attempt) {
     const auto certificates = QSslCertificate::fromPath(m_Directory + "/credentials/cert.pem");
     if (!running() || certificates.isEmpty()) {
+        Diagnostics::instance().record("host", "DeskPort failure stage=host-management code=" +
+            QString(!running() ? "host-not-running" : "host-certificate-missing"));
         completion({{"status", false}, {"code", "unavailable"}}); return;
     }
     const auto generation = m_Generation;
     const auto expected = certificates.first();
     QNetworkRequest request(QUrl(QString("https://127.0.0.1:%1/api/deskport/%2").arg(m_BasePort + 1).arg(path)));
-    request.setTransferTimeout(10000);
+    request.setTransferTimeout(body.isEmpty() ? 1500 : 10000);
     request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::ManualRedirectPolicy);
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
     request.setRawHeader("Authorization", "Basic " + ("deskport:" + m_Password).toUtf8().toBase64());
@@ -1049,13 +1051,39 @@ void HostManager::managementRequest(const QString& path, const QJsonObject& body
         if (reply->sslConfiguration().peerCertificate() == expected) reply->ignoreSslErrors();
     });
     const QPointer<QObject> alive(context);
-    connect(reply, &QNetworkReply::finished, this, [this, reply, alive, generation, expected, completion] {
+    connect(reply, &QNetworkReply::finished, this, [this, reply, alive, generation, expected, completion, path, body, attempt] {
         const auto object = QJsonDocument::fromJson(reply->readAll()).object();
+        const bool pinned = reply->sslConfiguration().peerCertificate() == expected;
+        const int http = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        const auto error = reply->error();
         const bool valid = generation == m_Generation && running() &&
-            reply->error() == QNetworkReply::NoError &&
-            reply->sslConfiguration().peerCertificate() == expected && object["version"].toInt() == 1 &&
+            error == QNetworkReply::NoError && pinned && object["version"].toInt() == 1 &&
             object["status"].isBool();
+        const bool transient = error == QNetworkReply::ConnectionRefusedError ||
+            error == QNetworkReply::RemoteHostClosedError || error == QNetworkReply::TimeoutError ||
+            error == QNetworkReply::TemporaryNetworkFailureError || (pinned && http == 503);
+        if (!valid) {
+            const QString reason = generation != m_Generation ? "host-generation-changed" :
+                !running() ? "host-not-running" : http == 401 || http == 403 ? "management-auth" :
+                error == QNetworkReply::SslHandshakeFailedError || (!pinned && http != 0) ? "management-certificate" :
+                error != QNetworkReply::NoError ? "management-network" : "management-schema";
+            Diagnostics::instance().record("host", "DeskPort failure stage=host-management code=" + reason);
+        }
         reply->deleteLater();
+        // Retry only read-only status queries. Replaying acquire/release or
+        // takeover after a lost response could repeat a completed mutation.
+        if (alive && !valid && body.isEmpty() && transient && http != 401 && http != 403 &&
+            generation == m_Generation && running() && attempt < 2) {
+            QTimer::singleShot(attempt == 0 ? 200 : 500, this,
+                [this, alive, generation, completion, path, attempt] {
+                if (!alive) return;
+                if (generation != m_Generation || !running()) {
+                    completion({{"status", false}, {"code", "unavailable"}}); return;
+                }
+                managementRequest(path, {}, alive, completion, attempt + 1);
+            });
+            return;
+        }
         if (alive) completion(valid ? object : QJsonObject{{"status", false}, {"code", "unavailable"}});
     });
 }

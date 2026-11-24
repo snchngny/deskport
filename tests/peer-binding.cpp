@@ -1425,6 +1425,42 @@ private slots:
         QCOMPARE(DeskPortDisplay::scaleForOutput({1080, 1920}, {1920, 1080}, 1.5), 1.5);
     }
 
+    void managementReadinessRetriesAreBoundedAndNeverReplayWrites() {
+        QTemporaryDir dir;
+        HostManager host(nullptr, dir.path());
+        QVERIFY(host.prepareIdentity(credential("TEST_CERT_B"), credential("TEST_KEY_B")));
+        host.start(2560,1440);
+        QTRY_VERIFY_WITH_TIMEOUT(host.canPair() && QFile::exists(dir.path()+"/management-ready"),5000);
+        const auto write = [&](const char* name, const QByteArray& value) {
+            QFile file(dir.path()+"/"+name);
+            if (!file.open(QIODevice::WriteOnly|QIODevice::Truncate)) return false;
+            return file.write(value)==value.size();
+        };
+        const auto read = [&](const char* name) {
+            QFile file(dir.path()+"/"+name);return file.open(QIODevice::ReadOnly)?file.readAll():QByteArray();
+        };
+        QJsonObject response;bool done=false;
+        auto get = [&] {done=false;host.sessionControl({},&host,[&](QJsonObject value){response=value;done=true;});};
+        QVERIFY(write("management-get-faults","2"));
+        get();QTRY_VERIFY_WITH_TIMEOUT(done,5000);
+        QVERIFY(response["status"].toBool());QCOMPARE(read("management-get-count"),QByteArray("3"));
+        QVERIFY(write("management-get-faults","9"));QVERIFY(write("management-get-count","0"));
+        get();QTRY_VERIFY_WITH_TIMEOUT(done,5000);
+        QVERIFY(!response["status"].toBool());QCOMPARE(read("management-get-count"),QByteArray("3"));
+        auto state=PeerStore::read(dir.path()+"/test-sessions.json");state["fail"]=true;
+        QVERIFY(PeerStore::write(dir.path()+"/test-sessions.json",state));
+        done=false;host.sessionControl({{"action","acquire"},{"snapshot","0:0"},{"lease","fixture"}},&host,
+            [&](QJsonObject value){response=value;done=true;});
+        QTRY_VERIFY_WITH_TIMEOUT(done,5000);
+        QVERIFY(!response["status"].toBool());
+        QCOMPARE(PeerStore::read(dir.path()+"/test-sessions.json")["postCalls"].toInt(),1);
+        QVERIFY(write("management-get-faults","9"));QVERIFY(write("management-get-count","0"));
+        get();
+        QTRY_COMPARE_WITH_TIMEOUT(read("management-get-count"),QByteArray("1"),2000);
+        host.stop();
+        QTRY_VERIFY_WITH_TIMEOUT(done && !host.running(),5000);
+        QVERIFY(!response["status"].toBool());QCOMPARE(read("management-get-count"),QByteArray("1"));
+    }
     void adaptiveDisplayRequiresPinnedApprovedExclusiveController() {
         QTemporaryDir dir;
         const auto aCert = credential("TEST_CERT_A"), bCert = credential("TEST_CERT_B"), cCert = credential("TEST_CERT_C");

@@ -1,3 +1,22 @@
+## Session preparation diagnosis — 2026-11-24
+
+imac.6 was installed on Windows and Intel Big Sur. Both applications completed
+an in-app reinstall while retaining settings, pairing and the Mac's persistent
+local signing identity and privacy permissions. Windows-to-Mac 4K30 input worked;
+the software input-to-returned-image probe measured a 197 ms median over ten
+trials with RustDesk connected. This is not physical input-to-photon latency.
+The reverse direction still fails with `session-prepare/unavailable`.
+
+The Windows host's pinned management API passed both status and an idle trusted
+peer acquire/release probe; that does not prove the GUI's management path works.
+The persistent failure's cause remains unconfirmed. Local diagnostics now retain
+fixed management/admission failure categories without endpoints or credentials.
+Only transient read-only management queries retry twice, with 200/500 ms delays.
+Writes, authentication/certificate errors, malformed responses, host generation
+changes and explicit stops are not replayed. Fault-injected readiness and write
+non-replay regressions are required before packaging this investigation build.
+Bidirectional live acceptance remains pending.
+
 ## Update dialog qualification — 2026-11-24
 
 The imac.5 native parser/identity checks passed, but expanded UI validation found
@@ -6,7 +25,8 @@ layout-owned width and keeps the install action on its own full-width row.
 The Linux UI runner now installs Qt's SVG plugin instead of treating missing
 SVG decoding as a product failure. imac.5 stays unpublished; existing candidate
 artifacts remain available for controlled migration testing. imac.6 build and
-live-update acceptance are pending.
+live-update acceptance passed on Windows and Intel Mac; reverse streaming remains
+under investigation as described above.
 
 ## iMac input recovery and explicit local updates — 2026-11-24
 

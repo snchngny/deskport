@@ -39,3 +39,7 @@ jobs:
           DESKPORT_QMAKE: qmake6
           DESKPORT_LRELEASE: /usr/lib/qt6/bin/lrelease
         run: python3 tests/test-host-lifecycle.py --ui -- deviceSettingsAreSeparate navigationAndDeviceIdentity managedSessionNavigation
+      - name: Bounded read-only management recovery
+        env:
+          DESKPORT_QMAKE: qmake6
+        run: python3 tests/test-host-lifecycle.py --binding -- managementReadinessRetriesAreBoundedAndNeverReplayWrites adaptiveDisplayRequiresPinnedApprovedExclusiveController
