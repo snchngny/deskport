@@ -57,6 +57,19 @@ public:
     QString status = "available", version = "0.4.6", notes = "Release notes", date = "2026-09-21", url = "https://github.com/keithxc/deskport/releases/tag/v0.4.6";
     Q_INVOKABLE void start() {}
 };
+class TestForkUpdates : public QObject {
+    Q_OBJECT
+    Q_PROPERTY(bool supported READ supported CONSTANT)
+    Q_PROPERTY(QString state READ state CONSTANT)
+    Q_PROPERTY(QString message READ message CONSTANT)
+    Q_PROPERTY(int installs MEMBER installs)
+public:
+    bool supported() const { return true; }
+    QString state() const { return QStringLiteral("idle"); }
+    QString message() const { return {}; }
+    int installs = 0;
+    Q_INVOKABLE void installLatest() { ++installs; }
+};
 class TestPresentation : public QObject {
     Q_OBJECT
     Q_PROPERTY(QString backdrop MEMBER backdrop NOTIFY backdropChanged)
@@ -396,6 +409,7 @@ private slots:
         qmlRegisterType<TestCanvas>("DeskPort.Canvas",1,0,"SessionCanvas");
         qmlRegisterType<TestComputers>("ComputerModel",1,0,"ComputerModel");
         qmlRegisterSingletonType<QObject>("AutoUpdateChecker",1,0,"AutoUpdateChecker",+[](QQmlEngine*,QJSEngine*) -> QObject* { return new TestUpdates; });
+        qmlRegisterSingletonType<QObject>("ForkUpdater",1,0,"ForkUpdater",+[](QQmlEngine*,QJSEngine*) -> QObject* { return new TestForkUpdates; });
         qmlRegisterType<TestSession>("Session",1,0,"Session");
         qmlRegisterSingletonType<Manual>("Manual",1,0,"Manual",+[](QQmlEngine*,QJSEngine*) -> QObject* { return new Manual; });
         qmlRegisterType<TestDesktopApps>("AppModel",1,0,"AppModel");
@@ -1323,6 +1337,12 @@ QtObject {
         QVERIFY(QMetaObject::invokeMethod(updateButton, "clicked"));
         auto updatePopup = root->findChild<QObject*>("updateDialog"); QVERIFY(updatePopup);
         QVERIFY(updatePopup->property("visible").toBool());
+        auto installUpdate=updatePopup->findChild<QQuickItem*>("installForkUpdate"); QVERIFY(installUpdate);
+        QVERIFY(installUpdate->isVisible()); QVERIFY(installUpdate->isEnabled());
+        auto updater=engine.singletonInstance<QObject*>(qmlTypeId("ForkUpdater",1,0,"ForkUpdater")); QVERIFY(updater);
+        QCOMPARE(updater->property("installs").toInt(),0);
+        click(window,installUpdate);
+        QCOMPARE(updater->property("installs").toInt(),1);
         QVERIFY(QMetaObject::invokeMethod(updatePopup, "close"));
         QCOMPARE(root->property("testDepth").toInt(),2);
         // Discard only initial setup navigation, which is scheduled once.
