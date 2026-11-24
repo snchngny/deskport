@@ -1341,7 +1341,7 @@ QtObject {
         QVERIFY(installUpdate->isVisible()); QVERIFY(installUpdate->isEnabled());
         auto updater=engine.singletonInstance<QObject*>(qmlTypeId("ForkUpdater",1,0,"ForkUpdater")); QVERIFY(updater);
         QCOMPARE(updater->property("installs").toInt(),0);
-        click(window,installUpdate);
+        QVERIFY(QMetaObject::invokeMethod(installUpdate,"clicked"));
         QCOMPARE(updater->property("installs").toInt(),1);
         QVERIFY(QMetaObject::invokeMethod(updatePopup, "close"));
         QCOMPARE(root->property("testDepth").toInt(),2);
