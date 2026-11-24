@@ -754,6 +754,8 @@ ApplicationWindow {
             }
             ScrollView {
                 visible: AutoUpdateChecker.releaseUrl.length > 0
+                implicitWidth: 0
+                contentWidth: availableWidth
                 Layout.fillWidth: true; Layout.preferredHeight: 230
                 clip: true
                 TextArea {
@@ -775,6 +777,16 @@ ApplicationWindow {
                 text: ForkUpdater.message; color: ForkUpdater.state === "error" ? "#b42318" : ui.muted
                 wrapMode: Text.WordWrap; Layout.fillWidth: true
             }
+            UiButton {
+                objectName: "installForkUpdate"
+                Layout.fillWidth: true
+                visible: ForkUpdater.supported
+                text: AutoUpdateChecker.status === "available" ? qsTr("Download and update") : qsTr("Download and reinstall latest")
+                highlighted: true
+                enabled: (AutoUpdateChecker.status === "available" || AutoUpdateChecker.status === "current") &&
+                    ForkUpdater.state !== "downloading" && ForkUpdater.state !== "preparing" && ForkUpdater.state !== "restarting"
+                onClicked: ForkUpdater.installLatest()
+            }
             RowLayout {
                 Layout.fillWidth: true
                 UiButton {
@@ -783,15 +795,6 @@ ApplicationWindow {
                     onClicked: AutoUpdateChecker.start()
                 }
                 Item { Layout.fillWidth: true }
-                UiButton {
-                    objectName: "installForkUpdate"
-                    visible: ForkUpdater.supported
-                    text: AutoUpdateChecker.status === "available" ? qsTr("Download and update") : qsTr("Download and reinstall latest")
-                    highlighted: true
-                    enabled: (AutoUpdateChecker.status === "available" || AutoUpdateChecker.status === "current") &&
-                        ForkUpdater.state !== "downloading" && ForkUpdater.state !== "preparing" && ForkUpdater.state !== "restarting"
-                    onClicked: ForkUpdater.installLatest()
-                }
                 UiButton {
                     text: qsTr("Open download page")
                     enabled: AutoUpdateChecker.releaseUrl.length > 0

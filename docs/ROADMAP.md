@@ -1,3 +1,13 @@
+## Update dialog qualification — 2026-11-24
+
+The imac.5 native parser/identity checks passed, but expanded UI validation found
+a release-notes ScrollView implicit-width binding loop. imac.6 gives the notes a
+layout-owned width and keeps the install action on its own full-width row.
+The Linux UI runner now installs Qt's SVG plugin instead of treating missing
+SVG decoding as a product failure. imac.5 stays unpublished; existing candidate
+artifacts remain available for controlled migration testing. imac.6 build and
+live-update acceptance are pending.
+
 ## iMac input recovery and explicit local updates — 2026-11-24
 
 Native A/B/A checks on the Intel Big Sur host isolated input loss to the
