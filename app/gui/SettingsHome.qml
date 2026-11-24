@@ -123,7 +123,7 @@ UiPage {
 
     UiGroup {
         title: qsTr("Diagnostics and feedback")
-        footnote: diagnostics.status.length > 0 ? diagnostics.status : qsTr("Off by default. Logs stay on this computer until you share them. See Privacy for what is recorded.")
+        footnote: diagnostics.status.length > 0 ? diagnostics.status : qsTr("Logs stay on this computer for up to 7 days. Saving a ZIP does not upload it. See Privacy for what is recorded.")
         UiRow {
             objectName: "diagnosticsSwitch"
             iconSource: "qrc:/res/ui/diagnostics.svg"
@@ -131,7 +131,19 @@ UiPage {
             switchable: true; on: diagnostics.enabled
             onSwitched: function(value) { diagnostics.enabled = value }
         }
-        // One way to report: it packs the logs into a ZIP and opens a draft GitHub issue.
+        UiRow {
+            objectName: "openDiagnosticsFolder"
+            iconSource: "qrc:/res/ui/diagnostics.svg"
+            title: qsTr("Open logs folder")
+            onClicked: diagnostics.showLogs()
+        }
+        UiRow {
+            objectName: "saveDiagnosticsZip"
+            iconSource: "qrc:/res/ui/clipboard.svg"
+            title: qsTr("Save logs as ZIP")
+            onClicked: diagnostics.createBundle()
+        }
+        // Reporting is separate from saving local logs.
         UiRow {
             objectName: "feedbackButton"
             iconSource: "qrc:/res/ui/report.svg"

@@ -48,6 +48,25 @@ private slots:
         QFile archive(logs.createBundle()); QVERIFY(archive.open(QIODevice::ReadOnly));
         const auto bytes = archive.readAll(); QVERIFY(bytes.contains("display-failed")); QVERIFY(bytes.contains("kwin"));
     }
+    void managementFailuresSurviveDiskAndExport() {
+        QTemporaryDir dir;
+        Diagnostics logs(nullptr,dir.path());logs.setEnabled(true);
+        const QStringList codes {"host-not-running", "host-certificate-missing", "host-generation-changed", "management-auth", "management-certificate", "management-network", "management-schema", "management-snapshot", "management-acquire", "display-release"};
+        for (const auto& code : codes) {
+            logs.record("host","DeskPort failure stage=host-management code="+code);
+            auto event=Diagnostics::project("DeskPort failure stage=host-management code="+code);
+            event["source"]="host";event["run"]=QString(32,'a');event["elapsed_ms"]=1;
+            QCOMPARE(Diagnostics::validate(event)["code"].toString(),code);
+            event["code"]="private-host";QVERIFY(Diagnostics::validate(event).isEmpty());
+        }
+        QFile file(dir.path()+"/host-0.jsonl");QVERIFY(file.open(QIODevice::ReadOnly));
+        auto lines=file.readAll().trimmed().split('\n');QCOMPARE(lines.size(),codes.size());
+        for (int i=0;i<lines.size();++i)
+            QCOMPARE(QJsonDocument::fromJson(lines[i]).object()["code"].toString(),codes[i]);
+        QFile zip(logs.createBundle());QVERIFY(zip.open(QIODevice::ReadOnly));
+        const auto bytes=zip.readAll();for(const auto& code:codes)QVERIFY(bytes.contains(code.toUtf8()));
+        QVERIFY(!opened.isValid()); // Local export must not open an issue or upload.
+    }
     void defaultAndSavedPreference() {
         QStandardPaths::setTestModeEnabled(true);
         QSettings settings;

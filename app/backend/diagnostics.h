@@ -24,8 +24,9 @@ public:
     QString status() const { return m_Status; }
     Q_INVOKABLE bool feedback();
     Q_INVOKABLE void showBundle();
+    Q_INVOKABLE void showLogs();
     Q_INVOKABLE void clear();
-    QString createBundle();
+    Q_INVOKABLE QString createBundle();
     static QUrl issueUrl();
     static QJsonObject project(const QString& message);
     static QJsonObject validate(const QJsonObject& object);

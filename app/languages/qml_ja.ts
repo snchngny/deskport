@@ -1837,6 +1837,18 @@
     <context>
         <name>SettingsHome</name>
         <message>
+            <source>Open logs folder</source>
+            <translation>ログフォルダを開く</translation>
+        </message>
+        <message>
+            <source>Save logs as ZIP</source>
+            <translation>ログをZIPに保存</translation>
+        </message>
+        <message>
+            <source>Logs stay on this computer for up to 7 days. Saving a ZIP does not upload it. See Privacy for what is recorded.</source>
+            <translation>ログはこの端末に最大7日間保存します。ZIPの保存だけでは送信されません。記録内容はプライバシー説明で確認できます。</translation>
+        </message>
+        <message>
             <source>Send this computer's audio to connected devices</source>
             <translation>このコンピューターの音声を接続先のデバイスに送信</translation>
         </message>

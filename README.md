@@ -667,3 +667,7 @@ Diagnostic logs are enabled by default. Reproduce the issue,
 then create a logs ZIP and open a GitHub issue draft. Review the ZIP before attaching
 it: GitHub issues are public, and DeskPort does not upload or submit anything for
 you. See [diagnostic data and limits](docs/DIAGNOSTICS.md).
+
+通常のDeskPortで「設定 → 診断とフィードバック」から、ログフォルダを開く・ログをZIPに保存できます。
+ログは再起動後も端末内に残り、最大7日間と容量上限で整理されます。ZIPを保存するだけでは送信されません。
+接続準備の失敗は、管理接続・認証・証明書・応答形式・接続確保・画面解放の段階別コードで追跡できます。

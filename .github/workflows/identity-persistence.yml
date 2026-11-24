@@ -43,3 +43,7 @@ jobs:
         env:
           DESKPORT_QMAKE: qmake6
         run: python3 tests/test-host-lifecycle.py --binding -- managementReadinessRetriesAreBoundedAndNeverReplayWrites adaptiveDisplayRequiresPinnedApprovedExclusiveController
+      - name: Persist and export management failure logs
+        env:
+          DESKPORT_QMAKE: qmake6
+        run: python3 tests/test-diagnostics.py
