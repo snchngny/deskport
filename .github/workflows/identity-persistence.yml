@@ -42,7 +42,7 @@ jobs:
       - name: Bounded read-only management recovery
         env:
           DESKPORT_QMAKE: qmake6
-        run: python3 tests/test-host-lifecycle.py --binding -- managementReadinessRetriesAreBoundedAndNeverReplayWrites adaptiveDisplayRequiresPinnedApprovedExclusiveController
+        run: python3 tests/test-host-lifecycle.py --binding -- pinnedIdentityWinsOverDuplicateHostId managementReadinessRetriesAreBoundedAndNeverReplayWrites adaptiveDisplayRequiresPinnedApprovedExclusiveController
       - name: Persist and export management failure logs
         env:
           DESKPORT_QMAKE: qmake6

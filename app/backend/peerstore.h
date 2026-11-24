@@ -6,8 +6,40 @@
 #include <QJsonArray>
 #include <QSslCertificate>
 #include <QUuid>
+#include <QSettings>
 
 namespace PeerStore {
+// A host UUID is not an identity. Old approvals can survive a host key change.
+// Keep control and clipboard pinned to the same certificate as the video host.
+inline QJsonObject approvedHost(const QJsonObject& peers, const QString& hostId,
+                                const QSslCertificate& pinned = QSslCertificate()) {
+    if (hostId.isEmpty()) return {};
+    QJsonObject selected;
+    QSslCertificate identity;
+    for (const auto& value : peers) {
+        const auto peer=value.toObject();
+        if (peer["hostId"].toString().compare(hostId,Qt::CaseInsensitive) ||
+            !peer["ready"].toBool() || !peer["granted"].toBool()) continue;
+        const QSslCertificate certificate(peer["clientCert"].toString().toUtf8());
+        const int port=peer["bindingPort"].toInt();
+        if (certificate.isNull() || port<1 || port>65535 || (!pinned.isNull() && certificate!=pinned)) continue;
+        if (!selected.isEmpty() && certificate!=identity) return {}; // No arbitrary first-record fallback.
+        selected=peer;identity=certificate;
+    }
+    return selected;
+}
+inline QSslCertificate pinnedHost(QSettings& settings, const QString& hostId) {
+    int count=settings.beginReadArray("hostsbackup");
+    if (!count) {settings.endArray();count=settings.beginReadArray("hosts");}
+    QSslCertificate result;
+    for(int i=0;i<count;++i) {
+        settings.setArrayIndex(i);
+        if (!settings.value("uuid").toString().compare(hostId,Qt::CaseInsensitive)) {
+            result=QSslCertificate(settings.value("srvcert").toByteArray());break;
+        }
+    }
+    settings.endArray();return result;
+}
 inline bool write(const QString& path, const QJsonObject& object) {
     QSaveFile file(path);
     if (!file.open(QIODevice::WriteOnly)) return false;

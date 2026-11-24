@@ -252,11 +252,8 @@ QString PeerManager::pendingName() const {
         .arg(m_Link->peer["name"].toString(), m_Link->socket->peerAddress().toString(), m_Link->fingerprint.left(16));
 }
 QJsonObject PeerManager::sessionPeer(const QString& hostId) const {
-    for (const auto& value : m_Peers) {
-        const auto peer = value.toObject();
-        if (peer.value("hostId").toString().compare(hostId, Qt::CaseInsensitive) == 0) return peer;
-    }
-    return {};
+    QSettings settings;
+    return PeerStore::approvedHost(m_Peers,hostId,m_Persistent ? PeerStore::pinnedHost(settings,hostId) : QSslCertificate());
 }
 QVariantList PeerManager::peers() const {
     QVariantList result;

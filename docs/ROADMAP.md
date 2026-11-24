@@ -1,3 +1,19 @@
+## Duplicate host identity selection — 2026-11-24
+
+The reverse preparation failure was isolated on hardware to two approved peer
+records sharing a host UUID but containing different certificates. Video retained
+the current pinned certificate while control selected the first record's stale
+certificate. Archiving only the stale record, with a local backup and the current
+approval retained, restored the reverse 4K connection without re-pairing.
+
+Control, clipboard and managed session launch now select an approved binding by
+the video's pinned identity. UUID equality alone never picks between conflicting
+identities. Without a pin, ambiguous approved certificates fail closed. This does
+not change peer certificates, relax TLS verification or revoke unrelated devices.
+Regression coverage includes both record orders, denied/invalid records, and
+the existing host-settings backup recovery order. The source fix still needs
+packaging and live-update acceptance; input/latency acceptance remains separate.
+
 ## Session preparation diagnosis — 2026-11-24
 
 imac.6 was installed on Windows and Intel Big Sur. Both applications completed

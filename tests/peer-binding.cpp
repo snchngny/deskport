@@ -1425,6 +1425,25 @@ private slots:
         QCOMPARE(DeskPortDisplay::scaleForOutput({1080, 1920}, {1920, 1080}, 1.5), 1.5);
     }
 
+    void pinnedIdentityWinsOverDuplicateHostId() {
+        const QSslCertificate oldCert(credential("TEST_CERT_A")),currentCert(credential("TEST_CERT_B"));
+        QVERIFY(!oldCert.isNull() && !currentCert.isNull() && oldCert!=currentCert);
+        const auto peer=[](QSslCertificate cert) {return QJsonObject{{"hostId","fixture-host"},{"ready",true},{"granted",true},{"bindingPort",48991},{"clientCert",QString::fromUtf8(cert.toPem())}};};
+        QJsonObject peers{{"a-old",peer(oldCert)},{"z-current",peer(currentCert)}};
+        QCOMPARE(QSslCertificate(PeerStore::approvedHost(peers,"FIXTURE-HOST",currentCert)["clientCert"].toString().toUtf8()),currentCert);
+        QVERIFY(PeerStore::approvedHost(peers,"fixture-host").isEmpty());
+        peers={{"a-current",peer(currentCert)},{"z-old",peer(oldCert)}};
+        QCOMPARE(QSslCertificate(PeerStore::approvedHost(peers,"fixture-host",currentCert)["clientCert"].toString().toUtf8()),currentCert);
+        auto revoked=peer(currentCert);revoked["granted"]=false;peers["a-current"]=revoked;
+        QVERIFY(PeerStore::approvedHost(peers,"fixture-host",currentCert).isEmpty());
+        auto invalid=peer(currentCert);invalid["bindingPort"]=0;peers["a-current"]=invalid;
+        QVERIFY(PeerStore::approvedHost(peers,"fixture-host",currentCert).isEmpty());
+        QTemporaryDir dir;QSettings settings(dir.path()+"/hosts.ini",QSettings::IniFormat);
+        settings.beginWriteArray("hosts",1);settings.setArrayIndex(0);settings.setValue("uuid","fixture-host");settings.setValue("srvcert",currentCert.toPem());settings.endArray();
+        QCOMPARE(PeerStore::pinnedHost(settings,"FIXTURE-HOST"),currentCert);
+        settings.beginWriteArray("hostsbackup",1);settings.setArrayIndex(0);settings.setValue("uuid","fixture-host");settings.setValue("srvcert",oldCert.toPem());settings.endArray();
+        QCOMPARE(PeerStore::pinnedHost(settings,"fixture-host"),oldCert);
+    }
     void managementReadinessRetriesAreBoundedAndNeverReplayWrites() {
         QTemporaryDir dir;
         HostManager host(nullptr, dir.path());

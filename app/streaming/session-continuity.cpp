@@ -192,13 +192,10 @@ void Session::endForSystemSleep() {
 void Session::initializeClipboard() {
     if (!m_Preferences->sharedClipboard || !m_Preferences->remoteInput) return;
     const auto peers = PeerStore::read(InputTestProfile::data() + "/binding/peers.json")["peers"].toObject();
-    for (const auto& value : peers) {
-        const auto peer = value.toObject();
-        if (peer["hostId"].toString().compare(m_Computer->uuid, Qt::CaseInsensitive) ||
-            !peer["ready"].toBool() || !peer["granted"].toBool()) continue;
+    const auto peer=PeerStore::approvedHost(peers,m_Computer->uuid,m_Computer->serverCert);
+    if (!peer.isEmpty()) {
         const QSslCertificate cert(peer["clientCert"].toString().toUtf8());
         const int port = peer["bindingPort"].toInt();
-        if (cert.isNull() || port < 1 || port > 65535) break;
         auto identity = IdentityManager::get();
         m_Clipboard.reset(new ClipboardSync(std::unique_ptr<ClipboardChannel>(new ClipboardChannel(
             m_Computer->activeAddress.address(), quint16(port), cert, identity->getCertificate(), identity->getPrivateKey(), true))));
