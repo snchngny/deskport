@@ -13,8 +13,15 @@ jobs:
           persist-credentials: false
       - name: Native test dependencies
         run: |
+          # The regional HTTP archive stalled the previous job at 80 kB/s.
+          # Keep Ubuntu's signed suites/keys and use its canonical HTTPS archive.
+          for source in /etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources; do
+            if [ -f "$source" ]; then
+              sudo sed -i -E 's|http://([a-zA-Z0-9-]+\.)*archive\.ubuntu\.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' "$source"
+            fi
+          done
           sudo apt-get update
-          sudo apt-get install --yes qt6-base-dev qt6-declarative-dev qt6-tools-dev-tools libssl-dev g++ make qml6-module-qtquick qml6-module-qtquick-controls qml6-module-qtquick-layouts qml6-module-qtquick-window qml6-module-qtqml-workerscript qml6-module-qtquick-templates
+          sudo apt-get install --yes qt6-base-dev qt6-declarative-dev qt6-tools-dev-tools libqt6svg6 libssl-dev g++ make qml6-module-qtquick qml6-module-qtquick-controls qml6-module-qtquick-layouts qml6-module-qtquick-window qml6-module-qtqml-workerscript qml6-module-qtquick-templates
       - name: Preserve identity on restart and reject damaged settings
         run: |
           work="$RUNNER_TEMP/identity-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
