@@ -20,8 +20,8 @@ with tempfile.TemporaryDirectory(prefix="deskport-updates-") as temporary:
     (work / "test.pro").write_text(f'''QT += core network testlib
 CONFIG += console c++17 testcase
 CONFIG -= app_bundle
-SOURCES += "{root}/tests/update-checker.cpp" "{root}/app/backend/autoupdatechecker.cpp"
-HEADERS += "{root}/app/backend/autoupdatechecker.h"
+SOURCES += "{root}/tests/update-checker.cpp" "{root}/app/backend/autoupdatechecker.cpp" "{root}/app/backend/forkupdater.cpp"
+HEADERS += "{root}/app/backend/autoupdatechecker.h" "{root}/app/backend/forkupdater.h"
 INCLUDEPATH += "{root}/app" "{work}"
 TARGET = update-checker
 ''')

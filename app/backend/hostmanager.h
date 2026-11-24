@@ -122,6 +122,7 @@ public:
     Q_INVOKABLE void recallViewer() { emit viewerRecallRequested(); }
     void setResident(bool enabled) { m_Resident = enabled; }
     Q_INVOKABLE void requestExit();
+    bool requestUpdateExit();
     Q_INVOKABLE void requestRestart();
     // Called only after the viewer owners have drained; also checks our host.
     void completeExit();
@@ -228,6 +229,7 @@ private:
     bool m_Isolated = false;
     bool m_ServerRequested = false;
     bool m_RestartRequested = false;
+    bool m_UpdateRequested = false;
     quint64 m_Generation = 0;
     QByteArray m_DiagnosticStatusBuffer;
     QTimer m_RecoveryTimer;

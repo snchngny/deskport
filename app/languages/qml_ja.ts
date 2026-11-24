@@ -3917,4 +3917,10 @@
             <translation>ショートカットには Control、Alt/Option、Meta/Command のいずれかが必要です。</translation>
         </message>
     </context>
+    <context>
+        <name>main</name>
+        <message><source>Download and update</source><translation>ダウンロードして更新</translation></message>
+        <message><source>Download and reinstall latest</source><translation>最新版をダウンロードして再インストール</translation></message>
+        <message><source>Downloads this fork's verified package, keeps settings and pairing, and restarts DeskPort. Mac updates reuse this computer's local signing key. The previous app is retained for rollback.</source><translation>検証済みの改造版を取得し、設定・ペアリングを保持して再起動します。Macは既存のローカル署名キーを再利用します。旧版は復旧用に残します。</translation></message>
+    </context>
 </TS>

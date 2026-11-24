@@ -3,9 +3,34 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include "backend/autoupdatechecker.h"
+#include "backend/forkupdater.h"
 class UpdateCheckerTest : public QObject {
     Q_OBJECT
 private slots:
+    void installerAssets() {
+        const QString tag="v2.9.0-imac.5-input-preview", prefix="DeskPort-2.9.0-imac.5";
+        QJsonArray assets;
+        for(const auto& suffix : {"-windows-x64-portable-full.zip","-macos-x86_64-intel-bigsur.zip","-macos-arm64.zip","-macos-x86_64-intel-bigsur.dmg","-macos-arm64.dmg"}) {
+            const auto name=prefix+suffix;
+            assets.append(QJsonObject{{"name",name},{"state","uploaded"},{"size",100},{"digest","sha256:"+QString(64,'a')},
+                {"browser_download_url","https://github.com/snchngny/deskport/releases/download/"+tag+'/'+name}});
+        }
+        QJsonObject release{{"tag_name",tag},{"draft",false},{"prerelease",true},{"assets",assets},
+            {"html_url","https://github.com/snchngny/deskport/releases/tag/"+tag}};
+        auto check=[&](QString current,QString platform) {return ForkUpdater::selectAsset(QJsonDocument(QJsonArray{release}).toJson(),current,platform);};
+        QVERIFY(check("2.9.0-imac.4","windows")["name"].toString().endsWith("portable-full.zip"));
+        QVERIFY(check("2.9.0-imac.5","intel")["name"].toString().endsWith("intel-bigsur.dmg"));
+        QVERIFY(check("2.9.0-imac.5","arm")["name"].toString().endsWith("arm64.dmg"));
+        QVERIFY(check("2.9.0-imac.6","intel").isEmpty());
+        QVERIFY(check("2.9.0-imac.4","linux").isEmpty());
+        auto original=assets;
+        auto bad=assets[0].toObject();bad.remove("digest");assets[0]=bad;release["assets"]=assets;
+        QVERIFY(check("2.9.0-imac.4","windows").isEmpty());
+        bad=original[0].toObject();bad["digest"]="sha256:"+QString(64,'g');assets[0]=bad;release["assets"]=assets;
+        QVERIFY(check("2.9.0-imac.4","windows").isEmpty());
+        bad=original[0].toObject();bad["browser_download_url"]="https://example.com/update.zip";assets[0]=bad;release["assets"]=assets;
+        QVERIFY(check("2.9.0-imac.4","windows").isEmpty());
+    }
     void releases() {
         const QString tag = "v2.9.0-imac.4-preview";
         QJsonArray assets;

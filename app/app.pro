@@ -312,6 +312,7 @@ SOURCES += \
     gui/appmodel.cpp \
     streaming/streamutils.cpp \
     backend/autoupdatechecker.cpp \
+    backend/forkupdater.cpp \
     path.cpp \
     settings/mappingmanager.cpp \
     gui/sdlgamepadkeynavigation.cpp \
@@ -353,6 +354,7 @@ HEADERS += \
     streaming/video/decoder.h \
     streaming/streamutils.h \
     backend/autoupdatechecker.h \
+    backend/forkupdater.h \
     path.h \
     settings/mappingmanager.h \
     gui/sdlgamepadkeynavigation.h \

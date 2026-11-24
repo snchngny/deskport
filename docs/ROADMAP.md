@@ -1,3 +1,23 @@
+## iMac input recovery and explicit local updates — 2026-11-24
+
+Native A/B/A checks on the Intel Big Sur host isolated input loss to the
+separate Sunshine input process: standard in-process input delivered right-click
+and Escape, enabling the helper lost input, and standard input restored it again
+with the same signing identity and permissions. The helper is now opt-in only.
+Its internal failure and the orphaned helper cleanup remain separate work; no
+latency improvement is claimed from this change.
+
+The fork update dialog can now download/update or explicitly reinstall the
+latest compatible full package. GitHub's API digest and byte size must match.
+Windows validates ZIP paths, link types and decompressed limits before invoking
+the system libarchive extractor. Mac mounts the DMG read-only, verifies the app,
+and reuses the installed app's exact local signing identity from its keychain.
+Replacement waits for the old app to close, retains a rollback copy and preserves
+portable settings or external Mac settings/pairing. Linux/package-managed and
+unwritable installations keep their original installation route. This does not
+add Developer ID distribution or notarization. Native build, update transactions
+and both deployed machines are pending validation for imac.5.
+
 ## Persistent local macOS signing — 2026-11-23
 
 The iMac now has one persistent signing identity in its user keychain. A local

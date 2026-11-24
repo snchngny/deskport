@@ -578,10 +578,21 @@ void HostManager::updateTrayIcon() {
 #endif
     m_Tray.setIcon(icon);
 }
+bool HostManager::requestUpdateExit() {
+    if (m_ExitRequested || m_RestartRequested) return false;
+#ifdef Q_OS_MACOS
+    // The explicit Update button authorizes a temporary recovery pause. The
+    // normal LaunchServices restart clears this marker, just like manual launch.
+    if (!m_Isolated && unattendedEnabled() && !unattendedMarker("paused", true)) return false;
+#endif
+    m_UpdateRequested = true;
+    requestExit();
+    return true;
+}
 void HostManager::requestExit() {
     if (m_ExitRequested) return;
 #ifdef Q_OS_MACOS
-    if (!m_Isolated && unattendedEnabled() && !m_RestartRequested) {
+    if (!m_Isolated && unattendedEnabled() && !m_RestartRequested && !m_UpdateRequested) {
         QMessageBox question(QMessageBox::Question, tr("Unattended operation"),
             tr("Pause automatic recovery and quit? Recovery resumes the next time DeskPort opens."),
             QMessageBox::Cancel);

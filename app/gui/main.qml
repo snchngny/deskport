@@ -6,6 +6,7 @@ import QtQuick.Controls.Material 2.2
 
 import ComputerManager 1.0
 import AutoUpdateChecker 1.0
+import ForkUpdater 1.0
 import StreamingPreferences 1.0
 import SystemProperties 1.0
 import SdlGamepadKeyNavigation 1.0
@@ -764,8 +765,15 @@ ApplicationWindow {
                 }
             }
             Label {
-                text: qsTr("Opens the GitHub release page. Install using your usual method; Nix-managed installations should be updated through Nix.")
+                text: ForkUpdater.supported
+                    ? qsTr("Downloads this fork's verified package, keeps settings and pairing, and restarts DeskPort. Mac updates reuse this computer's local signing key. The previous app is retained for rollback.")
+                    : qsTr("Opens the GitHub release page. Install using your usual method; Nix-managed installations should be updated through Nix.")
                 color: ui.muted; wrapMode: Text.WordWrap; Layout.fillWidth: true
+            }
+            Label {
+                visible: ForkUpdater.message.length > 0
+                text: ForkUpdater.message; color: ForkUpdater.state === "error" ? "#b42318" : ui.muted
+                wrapMode: Text.WordWrap; Layout.fillWidth: true
             }
             RowLayout {
                 Layout.fillWidth: true
@@ -776,8 +784,16 @@ ApplicationWindow {
                 }
                 Item { Layout.fillWidth: true }
                 UiButton {
-                    text: qsTr("Open download page")
+                    objectName: "installForkUpdate"
+                    visible: ForkUpdater.supported
+                    text: AutoUpdateChecker.status === "available" ? qsTr("Download and update") : qsTr("Download and reinstall latest")
                     highlighted: true
+                    enabled: (AutoUpdateChecker.status === "available" || AutoUpdateChecker.status === "current") &&
+                        ForkUpdater.state !== "downloading" && ForkUpdater.state !== "preparing" && ForkUpdater.state !== "restarting"
+                    onClicked: ForkUpdater.installLatest()
+                }
+                UiButton {
+                    text: qsTr("Open download page")
                     enabled: AutoUpdateChecker.releaseUrl.length > 0
                     onClicked: Qt.openUrlExternally(AutoUpdateChecker.releaseUrl)
                 }

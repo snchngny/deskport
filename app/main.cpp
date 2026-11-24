@@ -1,4 +1,5 @@
 #include "backend/inputtestprofile.h"
+#include "backend/forkupdater.h"
 int runCanvasSelfTest(int argc, char** argv);
 // Qt owns the application entry point. This must precede every header that
 // can include SDL, including shortcut and session headers.
@@ -346,6 +347,8 @@ static void relaunchAfterExit()
 
 int main(int argc, char *argv[])
 {
+    const int updateResult=ForkUpdater::apply(argc,argv);
+    if(updateResult>=0) return updateResult;
 #ifdef Q_OS_LINUX
     // Qt 6.4's Wayland plugin defaults to the unversioned development library.
     // Installed systems and portable packages provide the runtime SONAME.
@@ -942,6 +945,8 @@ int main(int argc, char *argv[])
                                                 [](QQmlEngine*, QJSEngine*) -> QObject* {
                                                     return new AutoUpdateChecker();
                                                 });
+    ForkUpdater forkUpdater;
+    qmlRegisterSingletonInstance("ForkUpdater", 1, 0, "ForkUpdater", &forkUpdater);
     qmlRegisterSingletonType<Manual>("Manual", 1, 0, "Manual",
                                      [](QQmlEngine*, QJSEngine*) -> QObject* { return new Manual(); });
     [[maybe_unused]] const int systemPropertiesType = qmlRegisterSingletonType<SystemProperties>("SystemProperties", 1, 0,
@@ -979,6 +984,7 @@ int main(int argc, char *argv[])
 
     MultiSessions* multiSessions = nullptr;
     HostManager hostManager(nullptr, inputTestProfile.isEmpty() ? QString() : inputTestProfile + "/data/host");
+    forkUpdater.setExitHandler([&hostManager] { return hostManager.requestUpdateExit(); });
 #ifdef Q_OS_WIN
     WindowsInstallShutdown installShutdown(hostManager);
     app.installNativeEventFilter(&installShutdown);
