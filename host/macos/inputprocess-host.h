@@ -46,10 +46,13 @@ public:
         static Host host;
         return host;
     }
-    // DESKPORT_INPUT_PROCESS=0 keeps every packet in Sunshine.
+    // Keep Sunshine's standard input path by default. The separate process can
+    // remain alive while macOS drops its injected events; a successful socket
+    // write is not an input-delivery acknowledgement. Explicit opt-in is for
+    // diagnostics until the helper has native permission/lifecycle acceptance.
     void start() {
         const char *value = std::getenv("DESKPORT_INPUT_PROCESS");
-        enabled = !(value && std::string_view(value) == "0");
+        enabled = value && std::string_view(value) == "1";
         if (!enabled) {
             BOOST_LOG(info) << "DeskPort input process: disabled";
             return;
