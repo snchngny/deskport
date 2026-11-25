@@ -52,7 +52,8 @@ public:
     QStringList tuningLimited() const;
     void setDiagnosticsEnabled(bool enabled);
     void setShortcutEnabled(bool enabled, const QString& sequence = QStringLiteral("Meta+'"));
-    Q_INVOKABLE void open(QString id, QString name, QString address, QString app = QStringLiteral("Desktop"));
+    QJsonObject control(const QStringList& arguments);
+    Q_INVOKABLE void open(QString id, QString name, QString address, QString app = QStringLiteral("Desktop"), QJsonObject options = QJsonObject());
     Q_INVOKABLE void select(QString id);
     Q_INVOKABLE void showDevices();
     Q_INVOKABLE void disconnectSession(QString id);
@@ -88,6 +89,7 @@ signals:
 private:
     struct Entry {
         QString id, name, address, app, token, state = QStringLiteral("starting"), error, stopError;
+        QJsonObject controlOptions;
         QProcess* process = nullptr;
         QPointer<QLocalSocket> socket, videoSocket;
         SessionPresentation* presentation = nullptr;

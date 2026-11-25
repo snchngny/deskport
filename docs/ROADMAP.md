@@ -1,3 +1,13 @@
+## Local CLI/TUI session integration — 2026-11-25
+
+Local viewer commands reuse the desktop owner rather than the legacy `stream`
+entry point. Approved UUID resolution, certificate pinning, loop admission,
+worker initialization and input release remain on the GUI's existing path.
+Per-session profiles use an unsaved worker snapshot; a matching CLI owner is
+required to close the viewer. Submission, native connection state and live
+video/input/latency acceptance are recorded separately. Old runtimes explicitly
+require an upgrade. See [CLI commands](CLI.md#desktop-viewing-from-a-local-terminal).
+
 ## Source-first latency review — 2026-11-25
 
 Compared Moonlight Qt, Sunshine, MoonlightWeb, RustDesk and FreeRDP before further

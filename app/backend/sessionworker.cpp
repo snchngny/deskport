@@ -6,6 +6,7 @@
 #include "computermanager.h"
 #include "cli/startstream.h"
 #include "settings/streamingpreferences.h"
+#include "cli/sessionoptions.h"
 #include "streaming/session.h"
 #include "streaming/transitionwindow.h"
 #include <QCoreApplication>
@@ -109,7 +110,39 @@ void SessionWorker::command(const QJsonObject& message) {
         const auto peer=message.value("peer").toObject();
         if (!peer.isEmpty() && (peer.value("hostId").toString().compare(m_Host,Qt::CaseInsensitive) != 0 ||
             !m_Computers->addBoundHost(peer.toVariantMap(),false,true))) { finish(tr("The device binding is unavailable.")); return; }
-        auto launcher = new CliStartStream::Launcher(m_Host,m_App,nullptr,this);
+        StreamingPreferences* preferences = nullptr;
+        if (message.contains("options")) {
+            const auto options = message.value("options").toObject();
+            if (!DeskPortCli::validSessionOptions(options)) { finish(tr("Invalid local session options.")); return; }
+            preferences = StreamingPreferences::get()->snapshot(m_Host,this);
+            // Closing a CLI-owned viewer must not quit the host's desktop app.
+            preferences->quitAppAfter = false;
+            if (options.contains("resolution")) {
+                const auto size = options.value("resolution").toString().split('x');
+                preferences->width = size[0].toInt(); preferences->height = size[1].toInt();
+                preferences->adaptiveResolution = false;
+            }
+            if (options.contains("fps")) preferences->fps = options.value("fps").toInt();
+            if (options.contains("bitrate")) preferences->bitrateKbps = options.value("bitrate").toInt();
+            if (options.contains("pacing")) preferences->framePacing = options.value("pacing").toBool();
+            if (options.contains("codec")) {
+                const auto codec = options.value("codec").toString();
+                preferences->videoCodecConfig = codec == "H.264" ? StreamingPreferences::VCC_FORCE_H264 :
+                    codec == "HEVC" ? StreamingPreferences::VCC_FORCE_HEVC : codec == "AV1" ? StreamingPreferences::VCC_FORCE_AV1 : StreamingPreferences::VCC_AUTO;
+                if (codec == "H.264") preferences->enableHdr = false;
+            }
+            if (options.contains("decoder")) {
+                const auto decoder = options.value("decoder").toString();
+                preferences->videoDecoderSelection = decoder == "hardware" ? StreamingPreferences::VDS_FORCE_HARDWARE :
+                    decoder == "software" ? StreamingPreferences::VDS_FORCE_SOFTWARE : StreamingPreferences::VDS_AUTO;
+            }
+            if (options.contains("window")) {
+                const auto window = options.value("window").toString();
+                preferences->windowMode = window == "windowed" ? StreamingPreferences::WM_WINDOWED :
+                    window == "fullscreen" ? StreamingPreferences::WM_FULLSCREEN : StreamingPreferences::WM_FULLSCREEN_DESKTOP;
+            }
+        }
+        auto launcher = new CliStartStream::Launcher(m_Host,m_App,preferences,this);
         connect(launcher,&CliStartStream::Launcher::sessionCreated,this,[this](QString,Session* session) { attach(session); });
         connect(launcher,&CliStartStream::Launcher::failed,this,[this](QString error) { finish(error); });
         connect(launcher,&CliStartStream::Launcher::appQuitRequired,this,[this](QString) { finish(tr("Another application is running on that server.")); });

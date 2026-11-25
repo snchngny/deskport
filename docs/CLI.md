@@ -1,4 +1,4 @@
-# SSH administration and Omarchy hosts
+# Local session control and host administration
 
 DeskPort's Linux CLI lets you inspect prerequisites, administer the host, and
 prepare a user service from SSH. A running desktop, a usable capture backend,
@@ -9,6 +9,48 @@ The commands below run as the desktop's ordinary user. Do not use `sudo
 deskport` or copy another user's credentials. CLI administration does not
 require a Qt display connection. `host run` selects Qt's offscreen platform for
 the host supervisor while preserving the desktop environment for its helpers.
+
+## Desktop viewing from a local terminal
+
+The desktop owner exposes `viewerControlVersion: 1` in `status --json`.
+Windows and macOS clients can request a viewer without stopping sharing or
+quitting the resident desktop app. Linux host-only daemons explicitly return
+`unsupported` for viewer commands. Use the same OS user and configuration.
+
+```sh
+deskport sessions list --json
+deskport sessions get DEVICE_UUID --json
+# Generate a fresh 32-character lowercase hex owner for each CLI session.
+deskport sessions open DEVICE_UUID '{"owner":"FRESH_32_HEX_OWNER","fps":30,"codec":"H.264","window":"windowed"}' --json
+deskport sessions show DEVICE_UUID --json
+deskport sessions close DEVICE_UUID FRESH_32_HEX_OWNER --json
+```
+
+Replace the illustrative owner placeholder with a fresh random value; it is
+not accepted literally. Keep it in private local state, not command history or
+logs. The CLI/TUI adapter generates and saves it automatically. Device IDs are
+exact approved UUIDs from `devices list`; this command never pairs an arbitrary
+address. The native owner reuses the GUI's `MultiSessions`, device certificate
+pinning, `SessionGraph` admission and `SessionWorker` initialization. A duplicate
+open is rejected instead of taking ownership of a GUI session. Close checks the
+owner, ends only that viewer and leaves local sharing and the remote desktop app
+running. It acknowledges a stop request; use get/list to confirm `disconnected`.
+
+Options are validated JSON: `resolution` (64..16384 x 64..16384), `fps` (1..240),
+`bitrate` in Kbps (1..300000), `codec` (`auto`, `H.264`, `HEVC`, `AV1`), `decoder`
+(`auto`, `hardware`, `software`), `window` (`windowed`, `fullscreen`, `borderless`)
+and boolean `pacing`. Hardware and host policy still constrain actual output.
+Options apply to a worker-owned settings snapshot without saving it. Explicit
+resolution disables adaptive receive resolution for that session. Host display
+policy and permission settings remain the existing device settings.
+
+An accepted open reports `starting`, not a verified video/input connection.
+`get`/`list` expose native state, bounded error text and transport byte counters;
+they never expose owner capabilities, certificates or worker tokens. A timeout
+has an unknown outcome: inspect state rather than repeating a mutation. The
+CLI adapter saves its receipt before opening so it can later close an accepted
+request even when the response was lost. If the CLI crashes, the native owner
+may retain its viewer; use the same CLI's disconnect or the native GUI.
 
 ## Run and administer the host
 

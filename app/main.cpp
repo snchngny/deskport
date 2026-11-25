@@ -1063,6 +1063,7 @@ int main(int argc, char *argv[])
         qWarning() << "Cannot open the local CLI endpoint:" << controlServer.errorString();
     qmlRegisterType<SessionCanvas>("DeskPort.Canvas", 1, 0, "SessionCanvas");
     MultiSessions managedSessions(&peerManager, IdentityManager::get()->getCertificate(), IdentityManager::get()->getPrivateKey());
+    controlServer.setSessions([&managedSessions](const QStringList& args) { return managedSessions.control(args); });
     GlobalShortcut globalShortcut;
     QObject::connect(&globalShortcut, &GlobalShortcut::fallbackAvailabilityChanged, &managedSessions, [&managedSessions, &globalShortcut](bool enabled) {
         ShortcutState::configure(enabled, globalShortcut.sequence());

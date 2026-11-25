@@ -1,5 +1,6 @@
 #include "../backend/inputtestprofile.h"
 #include "hostcontrol.h"
+#include "sessionoptions.h"
 #include "backend/hostmanager.h"
 #include "backend/peermanager.h"
 #include "backend/pairinginvite.h"
@@ -58,6 +59,14 @@ QJsonObject success(const QJsonObject& data = {}) {
 }
 
 QString validate(const QStringList& args) {
+    if (args == QStringList{"sessions", "list"}) return {};
+    if (args.size() >= 3 && args[0] == "sessions" &&
+        QRegularExpression("^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$").match(args[2]).hasMatch()) {
+        if (args.size() == 3 && (args[1] == "get" || args[1] == "show")) return {};
+        if (args.size() == 4 && args[1] == "close" && QRegularExpression("^[a-f0-9]{32}$").match(args[3]).hasMatch()) return {};
+        QJsonObject options;
+        if (args.size() == 4 && args[1] == "open" && parseSessionOptions(args[3], options)) return {};
+    }
     if (args == QStringList{"status"} || args == QStringList{"config", "get"} ||
         args == QStringList{"sharing", "start"} || args == QStringList{"sharing", "stop"} ||
         args == QStringList{"devices", "list"} || args == QStringList{"devices", "pending"} ||
@@ -233,7 +242,11 @@ int printResult(const QJsonObject& result, bool json, int errorCode = 1) {
 }
 
 const char* helpText() {
-    return "Local SSH control (the DeskPort GUI or daemon must already be running):\n"
+    return "Local control (the DeskPort GUI or daemon must already be running):\n"
+           "  deskport sessions list [--json]\n"
+           "  deskport sessions get|show DEVICE_ID [--json]\n"
+           "  deskport sessions open DEVICE_ID OPTIONS_JSON [--json]\n"
+           "  deskport sessions close DEVICE_ID OWNER [--json]\n"
            "  deskport status [--json]\n"
            "  deskport sharing start|stop [--json]\n"
            "  deskport web info [--json]\n"
@@ -255,7 +268,7 @@ const char* helpText() {
            "The connection port accepts 1024..65535; stop sharing before renaming.\n";
 }
 bool isControlCommand(const QStringList& arguments) {
-    return arguments.size() > 1 && QStringList{"status", "sharing", "devices", "config", "web"}.contains(arguments[1]);
+    return arguments.size() > 1 && QStringList{"status", "sharing", "devices", "config", "web", "sessions"}.contains(arguments[1]);
 }
 QString socketName(const QString& directory) {
     const auto path = directory.isEmpty() ? (InputTestProfile::root().isEmpty() ? QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) : InputTestProfile::root()) : directory;
@@ -373,6 +386,7 @@ void ControlServer::acceptConnections() {
 }
 QJsonObject ControlServer::currentStatus() const {
     auto result = status(m_Host, m_Peers);
+    result["viewerControlVersion"] = m_Sessions ? 1 : 0;
     result["mode"] = m_Mode;
     if (m_StatusExtension) {
         const auto extension = m_StatusExtension();
@@ -382,6 +396,10 @@ QJsonObject ControlServer::currentStatus() const {
 }
 void ControlServer::dispatch(QObject* context, const QStringList& args) {
     auto request = static_cast<Request*>(context);
+    if (args.value(0) == "sessions") {
+        request->finish(m_Sessions ? m_Sessions(args) : failure("unsupported", "Viewing requires a desktop owner with session control support."));
+        return;
+    }
     if (args == QStringList{"web", "info"}) {
         request->finish(m_BrowserInfo ? success(m_BrowserInfo()) : failure("unavailable", "Browser access is unavailable in this instance."));
         return;

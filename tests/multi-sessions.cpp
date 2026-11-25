@@ -57,6 +57,10 @@ static int worker(QApplication& app) {
             }
             if (connecting && action == "initialize")
                 send({{"type","traffic"},{"received",1},{"sent",0}});
+            if (mode == "Desktop" && action == "initialize") {
+                const auto options = o.value("options").toObject();
+                send({{"type","traffic"},{"received",options.value("fps").toInt()},{"sent",options.value("bitrate").toInt()}});
+            }
             if(mode=="shortcut-config" && (action=="initialize" || action=="shortcut")) {
                 const auto sequence = o.value(action=="initialize" ? "shortcutSequence" : "sequence").toString();
                 const bool enabled = o.value(action=="initialize" ? "shortcutEnabled" : "enabled").toBool();
@@ -120,6 +124,39 @@ static int worker(QApplication& app) {
 class MultiSessionsTest : public QObject {
     Q_OBJECT
 private slots:
+    void localSessionControlUsesApprovedPeerAndOwner() {
+        QTemporaryDir dir(fixtureTemplate());
+        const auto cert=credential("TEST_CERT_A"), key=credential("TEST_KEY_A");
+        const QString id="11111111-2222-3333-4444-555555555555";
+        QDir().mkpath(dir.path()+"/binding");
+        QVERIFY(PeerStore::write(dir.path()+"/binding/peers.json",{{"version",1},{"peers",QJsonObject{
+            {"a",QJsonObject{{"hostId",id},{"clientCert",QString::fromUtf8(credential("TEST_CERT_B"))},
+                {"address","127.0.0.1"},{"bindingPort",48991},{"ready",true},{"granted",true}}}}}}));
+        HostManager host(nullptr,dir.path()+"/host",false);
+        PeerManager peers(&host,cert,key,dir.path()+"/binding",0,QHostAddress::LocalHost);
+        MultiSessions manager(&peers,cert,key);
+        const QString owner(32,'a');
+        const QString options=QString::fromUtf8(QJsonDocument(QJsonObject{{"owner",owner},{"fps",30},{"bitrate",35000}}).toJson(QJsonDocument::Compact));
+        QCOMPARE(manager.control({"sessions","open","99999999-2222-3333-4444-555555555555",options})["code"].toString(),QString("not-approved"));
+        QVERIFY(!manager.busy());
+        manager.setLifecycleBlocked(false,true);
+        QCOMPARE(manager.control({"sessions","open",id,options})["code"].toString(),QString("blocked"));
+        manager.setLifecycleBlocked(false,false);
+        const auto requested=manager.control({"sessions","open",id,options});
+        QVERIFY(requested["ok"].toBool());
+        QCOMPARE(requested["data"].toObject()["connection"].toString(),QString("starting"));
+        QTRY_COMPARE(manager.states().value(id).toString(),QString("connected"));
+        QTRY_COMPARE(manager.selectedTraffic().value("received").toInt(),30);
+        QTRY_COMPARE(manager.selectedTraffic().value("sent").toInt(),35000);
+        QCOMPARE(manager.control({"sessions","open",id,options})["code"].toString(),QString("session-exists"));
+        QCOMPARE(manager.control({"sessions","close",id,QString(32,'b')})["code"].toString(),QString("not-owned"));
+        QCOMPARE(manager.states().value(id).toString(),QString("connected"));
+        const auto listed=QJsonDocument(manager.control({"sessions","list"})).toJson();
+        QVERIFY(!listed.contains(owner.toUtf8())); QVERIFY(!listed.contains("BEGIN CERTIFICATE"));
+        QVERIFY(manager.control({"sessions","close",id,owner})["ok"].toBool());
+        QTRY_VERIFY(!manager.busy());
+        QCOMPARE(manager.states().value(id).toString(),QString("disconnected"));
+    }
     void initTestCase() {
         QVERIFY2(QSslSocket::supportsSsl(), "The fixture requires a working Qt SSL backend");
         QVERIFY2(!QSslCertificate(credential("TEST_CERT_A")).isNull(), "Local fixture certificate is unavailable");

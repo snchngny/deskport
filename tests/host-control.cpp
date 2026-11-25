@@ -43,6 +43,31 @@ static void send(QLocalSocket& socket, const QStringList& args) {
 class HostControl : public QObject {
     Q_OBJECT
 private slots:
+    void sessionControlValidatesBeforeDispatch() {
+        QTemporaryDir dir;
+        HostManager host(nullptr, dir.path()+"/host", false);
+        PeerManager peers(&host, credential("TEST_CERT_A"), credential("TEST_KEY_A"), dir.path()+"/binding", 0, QHostAddress::LocalHost);
+        DeskPortCli::ControlServer server(&host,&peers); QVERIFY(server.listen());
+        QLocalSocket unsupported; send(unsupported,{"sessions","list"}); QTRY_VERIFY(unsupported.canReadLine());
+        QCOMPARE(reply(unsupported)["code"].toString(),QString("unsupported"));
+        QStringList called;
+        server.setSessions([&](const QStringList& args) { called=args; return QJsonObject{{"version",1},{"ok",true},{"data",QJsonObject{{"accepted",true}}}}; });
+        const QString id="11111111-2222-3333-4444-555555555555";
+        const QString valid="{\"owner\":\"11111111111111111111111111111111\",\"fps\":30,\"codec\":\"H.264\"}";
+        for (const auto& bad : QStringList{"{}", "[]", "{\"owner\":\"x\"}",
+            "{\"owner\":\"11111111111111111111111111111111\",\"fps\":true}",
+            "{\"owner\":\"11111111111111111111111111111111\",\"fps\":30.5}",
+            "{\"owner\":\"11111111111111111111111111111111\",\"unknown\":1}"}) {
+            QLocalSocket invalid; send(invalid,{"sessions","open",id,bad}); QTRY_VERIFY(invalid.canReadLine());
+            QCOMPARE(reply(invalid)["code"].toString(),QString("usage")); QVERIFY(called.isEmpty());
+        }
+        QLocalSocket invalidId; send(invalidId,{"sessions","open","alias",valid}); QTRY_VERIFY(invalidId.canReadLine());
+        QCOMPARE(reply(invalidId)["code"].toString(),QString("usage")); QVERIFY(called.isEmpty());
+        QLocalSocket accepted; send(accepted,{"sessions","open",id,valid}); QTRY_VERIFY(accepted.canReadLine());
+        QVERIFY(reply(accepted)["ok"].toBool()); QCOMPARE(called,QStringList({"sessions","open",id,valid}));
+        QLocalSocket status; send(status,{"status"}); QTRY_VERIFY(status.canReadLine());
+        QCOMPARE(reply(status)["data"].toObject()["viewerControlVersion"].toInt(),1);
+    }
     void seamlessWindowStatesReachLocalStatus() {
         QTemporaryDir dir;
         const auto python = QStandardPaths::findExecutable(QStringLiteral("python3"));

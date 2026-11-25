@@ -51,3 +51,9 @@ jobs:
         env:
           DESKPORT_QMAKE: qmake6
         run: python3 tests/test-latency-probe.py
+      - name: Local session command validation and ownership
+        env:
+          DESKPORT_QMAKE: qmake6
+        run: |
+          python3 tests/test-host-lifecycle.py --cli -- sessionControlValidatesBeforeDispatch
+          python3 tests/test-host-lifecycle.py --sessions -- localSessionControlUsesApprovedPeerAndOwner

@@ -38,6 +38,7 @@ public:
         m_BrowserAuthenticator = std::move(uri); m_ResetBrowserCode = std::move(reset);
     }
     void setStatusExtension(std::function<QJsonObject()> status) { m_StatusExtension = std::move(status); }
+    void setSessions(std::function<QJsonObject(const QStringList&)> handler) { m_Sessions = std::move(handler); }
 private:
     void acceptConnections();
     void dispatch(QObject* request, const QStringList& arguments);
@@ -56,6 +57,7 @@ private:
     std::function<QString()> m_BrowserAuthenticator;
     std::function<bool()> m_ResetBrowserCode;
     std::function<QJsonObject()> m_StatusExtension;
+    std::function<QJsonObject(const QStringList&)> m_Sessions;
 };
 
 }

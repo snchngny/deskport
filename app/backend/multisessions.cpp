@@ -1,5 +1,7 @@
 #include <QGuiApplication>
 #include "multisessions.h"
+#include "cli/sessionoptions.h"
+#include <QJsonArray>
 #include "windowframe.h"
 #include <QScopedValueRollback>
 #include "peermanager.h"
@@ -163,7 +165,50 @@ QVariantMap MultiSessions::states() const {
     for (auto entry : m_Entries) result.insert(entry->id, entry->state);
     return result;
 }
-void MultiSessions::open(QString id, QString name, QString address, QString app) {
+QJsonObject MultiSessions::control(const QStringList& args) {
+    const auto fail = [](const QString& code, const QString& error) { return QJsonObject{{"version",1},{"ok",false},{"code",code},{"error",error}}; };
+    const auto done = [](QJsonObject data) { return QJsonObject{{"version",1},{"ok",true},{"data",data}}; };
+    const auto row = [](Entry* entry) {
+        // Never return the owner capability, worker token or peer certificates.
+        return QJsonObject{{"id",entry->id},{"state",entry->state},{"error",entry->error},
+                           {"visible",entry->exposed},{"traffic",QJsonObject::fromVariantMap(entry->traffic)}};
+    };
+    if (args == QStringList{"sessions","list"}) {
+        QJsonArray values;
+        for (auto entry : m_Entries) values.append(row(entry));
+        return done({{"sessions",values}});
+    }
+    const auto id = args.value(2).toLower();
+    auto entry = m_Entries.value(id);
+    const auto operation = args.value(1);
+    if (operation == "open") {
+        QJsonObject options;
+        if (args.size() != 4 || !DeskPortCli::parseSessionOptions(args[3],options)) return fail("usage","Invalid session options.");
+        if (m_Shutdown || m_Sleeping || m_Locked) return fail("blocked","The local desktop is sleeping, locked or shutting down.");
+        if (entry && (entry->state == "starting" || entry->state == "connected" || entry->state == "stopping" ||
+                      (entry->process && entry->process->state() != QProcess::NotRunning)))
+            return fail("session-exists","This desktop already has a viewing session. Use sessions show to recall it.");
+        const auto peer = m_Peers->sessionPeer(id);
+        if (!peer.value("ready").toBool() || !peer.value("granted").toBool() ||
+            QSslCertificate(peer.value("clientCert").toString().toUtf8()).isNull() || peer.value("address").toString().isEmpty())
+            return fail("not-approved","The exact device must be saved, ready and approved before connecting.");
+        open(id,peer.value("name").toString(),peer.value("address").toString(),"Desktop",options);
+        return done({{"session",row(m_Entries.value(id))},{"connection","starting"}});
+    }
+    if (!entry) return fail("not-found","No viewing session matches that exact device ID.");
+    if (operation == "get" && args.size() == 3) return done({{"session",row(entry)}});
+    if (operation == "show" && args.size() == 3) {
+        select(id); return done({{"session",row(entry)}});
+    }
+    if (operation == "close" && args.size() == 4) {
+        if (entry->controlOptions.value("owner").toString().isEmpty() || entry->controlOptions.value("owner").toString() != args[3])
+            return fail("not-owned","This caller does not own the viewing session.");
+        disconnectSession(id);
+        return done({{"session",row(entry)},{"connection","stopping"}});
+    }
+    return fail("usage","Unknown viewing operation.");
+}
+void MultiSessions::open(QString id, QString name, QString address, QString app, QJsonObject options) {
     if (m_Shutdown || m_Sleeping || m_Locked || id.isEmpty()) return;
     id = id.toLower();
     auto entry = m_Entries.value(id);
@@ -171,6 +216,7 @@ void MultiSessions::open(QString id, QString name, QString address, QString app)
     if (!entry) { entry = new Entry; entry->id = id; m_Entries.insert(id, entry); }
     m_Order.removeAll(id); m_Order.append(id);
     entry->name = name; entry->address = address; entry->app = app;
+    entry->controlOptions = options;
     entry->error.clear(); entry->stopError.clear(); entry->state = "starting"; entry->fullscreenPending = false; entry->exposed = false;
     entry->token = QUuid::createUuid().toString(QUuid::WithoutBraces);
     if (entry->videoSocket) { entry->videoSocket->abort(); entry->videoSocket = nullptr; }
@@ -248,6 +294,7 @@ void MultiSessions::accept() {
                     peer["address"]=(*owner)->address;
                     QJsonObject initialize {{"command","initialize"},{"peer",peer},{"shortcutEnabled",m_ShortcutEnabled},
                                             {"shortcutSequence",m_ShortcutSequence}};
+                    if (!(*owner)->controlOptions.isEmpty()) initialize["options"] = (*owner)->controlOptions;
                     if (canvasEnabled()) initialize["canvas"] = m_CanvasState;
                     send(*owner, initialize);
                     if ((*owner)->state == "stopping") send(*owner,{{"command","disconnect"}});
