@@ -2,6 +2,7 @@
 #include <QWindow>
 #include "../../../resizetrace.h"
 #include "pacer.h"
+#include "decodedframequeue.h"
 #include "pacingclock.h"
 #include "streaming/streamutils.h"
 #include "streaming/streamsnapshot.h"
@@ -103,7 +104,10 @@ void Pacer::renderOnMainThread()
     m_FrameQueueLock.lock();
 
     if (!m_RenderQueue.isEmpty()) {
-        AVFrame* frame = m_RenderQueue.dequeue();
+        AVFrame* frame = takeDecodedPresentation(m_RenderQueue,m_VsyncThread!=nullptr || m_ClockPacing,[this](AVFrame* stale) {
+            ++m_VideoStats->pacerDroppedFrames;
+            av_frame_free(&stale);
+        });
         m_FrameQueueLock.unlock();
 
         renderFrame(frame);
@@ -195,7 +199,10 @@ int Pacer::renderThread(void* context)
             break;
         }
 
-        AVFrame* frame = me->m_RenderQueue.dequeue();
+        AVFrame* frame = takeDecodedPresentation(me->m_RenderQueue,me->m_VsyncThread!=nullptr || me->m_ClockPacing,[me](AVFrame* stale) {
+            ++me->m_VideoStats->pacerDroppedFrames;
+            av_frame_free(&stale);
+        });
         me->m_FrameQueueLock.unlock();
 
         me->renderFrame(frame);
@@ -464,6 +471,7 @@ void Pacer::renderFrame(AVFrame* frame)
     // Render it
     const int submittedWidth = frame->width, submittedHeight = frame->height;
     m_VsyncRenderer->renderFrame(frame);
+    if (m_Callbacks.frameSubmitted && m_VsyncRenderer->lastFrameSubmitted()) m_Callbacks.frameSubmitted();
     if (m_FirstPresentation && m_VsyncRenderer->lastFrameSubmitted()) {
         // Renderer submission is observable here; physical scanout is not.
         deskportResizeStage("first-render-submit", submittedWidth, submittedHeight);
@@ -524,6 +532,7 @@ void Pacer::dropFrameForEnqueue(QQueue<AVFrame*>& queue)
     SDL_assert(queue.size() <= MAX_QUEUED_FRAMES);
     if (queue.size() == MAX_QUEUED_FRAMES) {
         AVFrame* frame = queue.dequeue();
+        ++m_VideoStats->pacerDroppedFrames;
         av_frame_free(&frame);
     }
 }

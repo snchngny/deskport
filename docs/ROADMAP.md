@@ -1,3 +1,24 @@
+## Source-first latency review — 2026-11-25
+
+Compared Moonlight Qt, Sunshine, MoonlightWeb, RustDesk and FreeRDP before further
+hardware acceptance. The bounded encoded-frame queue remains intact: changing
+it to discard arbitrary compressed frames would violate codec dependencies.
+With frame pacing inactive, presentation now selects the latest decoded queued
+frame and releases older ones before rendering, rather than spending a render
+on a stale frame after a UI stall. The paced path retains its existing order.
+Capacity drops are included in the existing pacer-drop counters. This follows
+the stale-presentation disposal approach in [FreeRDP](https://github.com/FreeRDP/FreeRDP/blob/bd0ccc7e72227e81942c96502cee83af4e2e54db/channels/video/client/video_main.c);
+no RDP protocol or dependency is added.
+
+The response probe now checks deadlines and cancellation again after capture,
+uses frame-submission notifications instead of repeatedly sampling unchanged
+pictures, and varies trial delays to reduce refresh-phase bias. These patterns
+were compared with [MoonlightWeb](https://github.com/linckosz/moonlight-web/blob/3733ce3d30ea5b269030a9099ee085ed78624a0f/frontend/js/stream/LatencyProbe.js).
+Network, host-processing and local-render statistics remain distinct; RustDesk's
+shared-stream delay feedback is not treated as pure network RTT or copied into
+this streaming protocol. Source regressions and package compilation precede the
+final live check; they do not establish a measured physical latency improvement.
+
 ## In-app input-to-response measurement — 2026-11-25
 
 An explicit diagnostic marker and viewer measurement now use the existing

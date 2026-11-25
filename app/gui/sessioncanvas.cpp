@@ -138,6 +138,8 @@ SessionCanvas::SessionCanvas(QQuickItem* parent) : QQuickItem(parent), m_Inhibit
     m_LatencyProbe = new LatencyProbe(
         [this](QRect region) {
             if (!m_Surface || !m_Surface->screen() || !QRect(QPoint(),m_Surface->size()).contains(region)) return QImage();
+            const QRect onScreen(m_Surface->mapToGlobal(region.topLeft()),region.size());
+            if(!m_Surface->screen()->geometry().contains(onScreen)) return QImage();
             return m_Surface->screen()->grabWindow(m_Surface->winId(),region.x(),region.y(),region.width(),region.height()).toImage();
         },
         [this](QPoint point) {
@@ -159,6 +161,9 @@ SessionCanvas::SessionCanvas(QQuickItem* parent) : QQuickItem(parent), m_Inhibit
         });
     });
     connect(m_LatencyProbe,&LatencyProbe::finished,&LatencyTools::instance(),&LatencyTools::report);
+    connect(m_LatencyProbe,&LatencyProbe::activityChanged,this,[this](bool active) {
+        if(m_Presentation) m_Presentation->setResponseProbe(active);
+    });
     setAcceptedMouseButtons(Qt::AllButtons); setAcceptHoverEvents(true);
     setAcceptTouchEvents(true);
     setActiveFocusOnTab(true);
@@ -261,6 +266,7 @@ void SessionCanvas::setPresentation(QObject* value) {
         connect(presentation, &SessionPresentation::readyChanged, this, &SessionCanvas::frameReadyChanged);
         connect(presentation, &SessionPresentation::activeChanged, this, &SessionCanvas::refresh);
         connect(presentation, &SessionPresentation::backdropChanged, this, &SessionCanvas::refresh);
+        connect(presentation, &SessionPresentation::frameSubmitted,m_LatencyProbe,&LatencyProbe::frameReady);
         if (m_Surface) presentation->attach(m_Surface);
     }
     emit presentationChanged(); emit frameReadyChanged(); refresh();

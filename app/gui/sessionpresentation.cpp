@@ -4,6 +4,7 @@
 #include <QWindow>
 #include <QBuffer>
 #include <QImage>
+#include <atomic>
 #include "streaming/video/queuedframesource.h"
 #include "streaming/video/ffmpeg.h"
 #include "streaming/video/videostatus.h"
@@ -24,6 +25,7 @@ struct SessionPresentation::Impl {
     bool m_Ready = false, m_SdlInitialized = false;
     bool m_HasFrames = false;
     int m_ResetAttempts = 0;
+    std::atomic<bool> m_ResponseProbe{false}, m_ProbeFrameQueued{false};
 };
 SessionPresentation::SessionPresentation(QObject* parent) : QObject(parent), m_Impl(std::make_unique<Impl>()) {}
 bool SessionPresentation::ready() const { return m_Impl->m_Ready; }
@@ -32,8 +34,11 @@ bool SessionPresentation::hasFrames() const { return m_Impl->m_HasFrames; }
 QString SessionPresentation::backdrop() const { return m_Impl->m_Backdrop; }
 QImage SessionPresentation::backdropImage() const { return m_Impl->m_BackdropImage; }
 void SessionPresentation::preedit(const QString& text) { m_Impl->m_Overlays.updateTextInput(text, 0, text.size()); }
+void SessionPresentation::setResponseProbe(bool enabled) { m_Impl->m_ResponseProbe.store(enabled,std::memory_order_release); }
 SessionPresentation::~SessionPresentation() { stop(); }
 void SessionPresentation::stop() {
+    m_Impl->m_ResponseProbe.store(false,std::memory_order_release);
+    m_Impl->m_ProbeFrameQueued.store(false,std::memory_order_release);
     ++m_Impl->m_PresentationGeneration;
     if (m_Impl->m_Source) m_Impl->m_Source->stop();
     const bool wasActive = bool(m_Impl->m_Decoder);
@@ -124,6 +129,17 @@ bool SessionPresentation::start() {
     };
     params.presentationCallbacks.firstFrame = [this, generation] {
         QMetaObject::invokeMethod(this, [this, generation] { readyFrame(generation); }, Qt::QueuedConnection);
+    };
+    params.presentationCallbacks.frameSubmitted = [this, generation] {
+        // Idle cost is one atomic check; a stalled UI holds at most one probe
+        // notification, never another frame-sized buffer or an unbounded queue.
+        if (!m_Impl->m_ResponseProbe.load(std::memory_order_acquire) ||
+            m_Impl->m_ProbeFrameQueued.exchange(true,std::memory_order_acq_rel)) return;
+        QMetaObject::invokeMethod(this,[this,generation] {
+            if(generation!=m_Impl->m_PresentationGeneration) return;
+            m_Impl->m_ProbeFrameQueued.store(false,std::memory_order_release);
+            if(m_Impl->m_ResponseProbe.load(std::memory_order_acquire)) emit frameSubmitted();
+        },Qt::QueuedConnection);
     };
     params.presentationCallbacks.snapshotReady = [this, generation](QImage image) {
         // Prepare the small snapshot off the UI thread so QML can preload it

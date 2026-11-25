@@ -6,6 +6,8 @@
 #include <QMessageBox>
 #include <QInputDialog>
 #include <QDebug>
+#include <QRandomGenerator>
+#include <QScopedValueRollback>
 #include <algorithm>
 #include <cmath>
 
@@ -88,7 +90,11 @@ bool LatencyProbe::marker(const QImage& image, QPoint* center, bool* white, bool
 }
 void LatencyProbe::arm() {
     if (busy()) cancel();
+    ++m_Epoch;
+    m_CooldownMs=250;
+    m_FramePending=false;
     m_Samples.clear(); m_State=Selecting; m_Age.start(); m_Timer.start();
+    emit activityChanged(true);
 }
 void LatencyProbe::cancel() { if(busy()) finish(QStringLiteral("cancelled")); }
 bool LatencyProbe::target(QPoint* center, bool* white, bool requireReady) {
@@ -102,28 +108,50 @@ bool LatencyProbe::target(QPoint* center, bool* white, bool requireReady) {
 }
 bool LatencyProbe::select(QPoint point) {
     if (!selecting()) return false;
+    if (m_Sampling) return true;
+    QScopedValueRollback<bool> sampling(m_Sampling,true);
+    const auto epoch=m_Epoch;
     if (!m_Valid()) { finish("cancelled"); return true; }
     m_Point=point; QPoint center;
-    if (!target(&center,&m_White,false)) { finish("marker-missing"); return true; }
+    const bool found=target(&center,&m_White,false);
+    if(epoch!=m_Epoch) return true;
+    if(!m_Valid()) { finish("cancelled"); return true; }
+    if(m_Age.elapsed()>=45000) { finish("timeout"); return true; }
+    if(!found) { finish("marker-missing"); return true; }
     m_Point=center;
     // The selected marker receives a click only after its signature was found.
-    m_Click(center); m_State=Settle; m_Trial.start();
+    m_State=Settle; m_Trial.start(); m_Click(center);
     return true;
 }
 void LatencyProbe::tick() {
-    if (m_State==Idle) return;
+    if (m_State==Idle || m_Sampling) return;
+    QScopedValueRollback<bool> sampling(m_Sampling,true);
+    const auto epoch=m_Epoch;
     if (!m_Valid()) { finish("cancelled"); return; }
-    if (m_Age.elapsed()>45000) { finish("timeout"); return; }
+    if (m_Age.elapsed()>=45000) { finish("timeout"); return; }
     if (m_State==Selecting) return;
     if (m_State==Settle || m_State==Cooldown) {
-        if(m_Trial.elapsed()<250) return;
+        if(m_Trial.elapsed()<m_CooldownMs) return;
         QPoint center;
-        if(!target(&center,&m_White) || (center-m_Point).manhattanLength()>4) { finish("marker-missing"); return; }
+        const bool found=target(&center,&m_White);
+        if(epoch!=m_Epoch) return;
+        if(!m_Valid()) { finish("cancelled"); return; }
+        if(m_Age.elapsed()>=45000) { finish("timeout"); return; }
+        if(!found || (center-m_Point).manhattanLength()>4) { finish("marker-missing"); return; }
         // Timestamp immediately before sending through the normal session path.
+        m_FramePending=false;
         m_State=Waiting; m_Trial.start(); m_Enter(); return;
     }
     if (m_State!=Waiting) return;
+    if(m_Trial.elapsed()>=2000) { finish("timeout"); return; }
+    if(!m_FramePending) return;
+    m_FramePending=false;
     const auto image=m_Capture(QRect(m_Point-QPoint(4,4),QSize(8,8)));
+    // Capture can block or dispatch native events. A late picture or a callback
+    // from a cancelled/replaced measurement must never become a valid sample.
+    if(epoch!=m_Epoch) return;
+    if(!m_Valid()) { finish("cancelled"); return; }
+    if(m_Age.elapsed()>=45000 || m_Trial.elapsed()>=2000) { finish("timeout"); return; }
     bool white;
     if(image.isNull() || !light(image,QPoint(image.width()/2,image.height()/2),&white)) { finish("capture-unavailable"); return; }
     if(white!=m_White) {
@@ -131,11 +159,15 @@ void LatencyProbe::tick() {
         m_Samples.append(us);
         qInfo("DeskPort response-latency stage=sample trial=%d duration_us=%lld",int(m_Samples.size()),static_cast<long long>(us));
         if(m_Samples.size()==12) { finish("completed"); return; }
+        // Avoid phase locking all trials to the host's refresh/polling period.
+        m_CooldownMs=250+QRandomGenerator::global()->bounded(100);
         m_State=Cooldown; m_Trial.restart();
-    } else if(m_Trial.elapsed()>2000) finish("timeout");
+    }
 }
 void LatencyProbe::finish(const QString& code) {
+    ++m_Epoch;
     m_State=Idle; m_Timer.stop();
+    emit activityChanged(false);
     QJsonObject result{{"status",code},{"samples",qMax(0,int(m_Samples.size())-2)}};
     if(code=="completed" && m_Samples.size()==12) {
         auto values=m_Samples.mid(2); std::sort(values.begin(),values.end());

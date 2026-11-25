@@ -26,6 +26,7 @@ public:
     void status(const QJsonObject& status);
     void overlays(const QJsonObject& overlays);
     void preedit(const QString& text);
+    void setResponseProbe(bool enabled);
     void attach(QWindow* canvas);
     void detach();
     void resized(bool force = false);
@@ -35,6 +36,7 @@ signals:
     void activeChanged();
     void backdropChanged();
     void idrRequested();
+    void frameSubmitted();
     void failed(QString error);
 private:
     bool start();

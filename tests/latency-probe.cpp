@@ -1,6 +1,7 @@
 #include <QtTest>
 #include <QPainter>
 #include "gui/latencyprobe.h"
+#include "streaming/video/ffmpeg-renderers/pacer/decodedframequeue.h"
 
 namespace {
 QImage marker(bool white=false) {
@@ -15,6 +16,18 @@ QImage marker(bool white=false) {
 class LatencyProbeTest : public QObject {
     Q_OBJECT
 private slots:
+    void unpacedPresentationUsesLatestAndReleasesOldFrames() {
+        QQueue<int> frames;frames.enqueue(10);frames.enqueue(11);frames.enqueue(12);
+        QList<int> released;
+        QCOMPARE(takeDecodedPresentation(frames,false,[&](int frame){released.append(frame);}),12);
+        QCOMPARE(released,QList<int>({10,11}));QVERIFY(frames.isEmpty());
+    }
+    void pacedPresentationPreservesOrder() {
+        QQueue<int> frames;frames.enqueue(10);frames.enqueue(11);frames.enqueue(12);
+        int released=0;
+        QCOMPARE(takeDecodedPresentation(frames,true,[&](int){++released;}),10);
+        QCOMPARE(frames.size(),2);QCOMPARE(frames.head(),11);QCOMPARE(released,0);
+    }
     void markerAndUnrelatedImages() {
         QPoint center; bool white;
         QVERIFY(LatencyProbe::marker(marker(),&center,&white)); QCOMPARE(center,QPoint(160,160)); QVERIFY(!white);
@@ -42,8 +55,10 @@ private slots:
     }
     void twelveResponsesDiscardTwoWarmups() {
         bool white=false; int keys=0,clicks=0;
+        LatencyProbe* current=nullptr;
         LatencyProbe probe([&](QRect r){return marker(white).copy(r);},[&](QPoint){++clicks;},
-            [&]{++keys;QTimer::singleShot(35,this,[&]{white=!white;});},[]{return true;},this);
+            [&]{++keys;QTimer::singleShot(35,this,[&]{white=!white;current->frameReady();});},[]{return true;},this);
+        current=&probe;
         QSignalSpy done(&probe,&LatencyProbe::finished);
         probe.arm(); probe.select(QPoint(160,160));
         QTRY_COMPARE_WITH_TIMEOUT(done.size(),1,10000);
@@ -71,6 +86,50 @@ private slots:
         QTRY_COMPARE_WITH_TIMEOUT(done.size(),1,2000);
         QCOMPARE(keys,0);QCOMPARE(clicks,1);
         QCOMPARE(done.first().first().toJsonObject()["status"].toString(),QString("marker-missing"));
+    }
+    void cancellationInsideCaptureCannotSendInput() {
+        int keys=0,clicks=0; LatencyProbe* current=nullptr;
+        LatencyProbe probe([&](QRect r){current->cancel();return marker().copy(r);},[&](QPoint){++clicks;},[&]{++keys;},[]{return true;},this);
+        current=&probe;
+        QSignalSpy done(&probe,&LatencyProbe::finished);
+        probe.arm();probe.select(QPoint(160,160));
+        QCOMPARE(keys,0);QCOMPARE(clicks,0);QCOMPARE(done.size(),1);QVERIFY(!probe.busy());
+    }
+    void lateCaptureCannotAcceptAResponse() {
+        int keys=0;
+        LatencyProbe* current=nullptr;
+        LatencyProbe probe([&](QRect r){
+            if(r.width()==8) { QThread::msleep(2100); return marker(true).copy(r); }
+            return marker().copy(r);
+        },[](QPoint){},[&]{++keys;current->frameReady();},[]{return true;},this);
+        current=&probe;
+        QSignalSpy done(&probe,&LatencyProbe::finished);
+        probe.arm();probe.select(QPoint(160,160));
+        QTRY_COMPARE_WITH_TIMEOUT(done.size(),1,5000);
+        QCOMPARE(keys,1);QCOMPARE(done.first().first().toJsonObject()["status"].toString(),QString("timeout"));
+        QCOMPARE(done.first().first().toJsonObject()["samples"].toInt(),0);
+    }
+    void focusChangedDuringCaptureRejectsThePicture() {
+        bool valid=true; int keys=0;
+        LatencyProbe* current=nullptr;
+        LatencyProbe probe([&](QRect r){if(r.width()==8){valid=false;return marker(true).copy(r);}return marker().copy(r);},
+            [](QPoint){},[&]{++keys;current->frameReady();},[&]{return valid;},this);
+        current=&probe;
+        QSignalSpy done(&probe,&LatencyProbe::finished);
+        probe.arm();probe.select(QPoint(160,160));
+        QTRY_COMPARE_WITH_TIMEOUT(done.size(),1,2000);
+        QCOMPARE(keys,1);QCOMPARE(done.first().first().toJsonObject()["status"].toString(),QString("cancelled"));
+        QVERIFY(!probe.busy());
+    }
+    void waitingWithoutFramesDoesNotPollThePicture() {
+        int keys=0,reads=0;
+        LatencyProbe probe([&](QRect r){if(r.width()==8)++reads;return marker().copy(r);},
+            [](QPoint){},[&]{++keys;},[]{return true;},this);
+        probe.arm();probe.select(QPoint(160,160));
+        QTest::qWait(500);QCOMPARE(keys,1);QCOMPARE(reads,0);
+        probe.frameReady();QTRY_COMPARE_WITH_TIMEOUT(reads,1,1000);
+        QTest::qWait(100);QCOMPARE(reads,1);
+        probe.cancel();
     }
 };
 QTEST_MAIN(LatencyProbeTest)

@@ -1,6 +1,7 @@
 HEADERS += backend/inputtestprofile.h
 SOURCES += gui/canvasselftest.cpp
 SOURCES += gui/latencyprobe.cpp
+HEADERS += streaming/video/ffmpeg-renderers/pacer/decodedframequeue.h
 HEADERS += gui/latencyprobe.h
 SOURCES += gui/canvaspointer.cpp
 HEADERS += gui/canvaspointer.h

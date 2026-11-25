@@ -32,12 +32,29 @@ unrecognized marker, missing response, changed session, resize or focus loss
 ends the test without accepting a result. Escape cancels it. Do not change the
 selected desktop during a measurement. The marker closes after ten minutes.
 
+Sampling is driven by renderer-submitted frames while a measurement is active;
+the regular deadline timer does not repeatedly read an unchanged picture. The
+submission hook is dormant outside measurements, and pending UI notifications
+are coalesced. Inter-trial delays vary to reduce synchronization with refresh
+periods. A late capture is rejected even if it contains the expected response;
+cancellation or a focus change during capture cannot send the next input.
+
+The bounded native-window read uses Qt's screen sampling API. Keep the viewer
+unobscured and the sampled region on one screen: overlapping windows can appear
+in a screen read. Unsupported reads fail without requesting additional OS
+permissions or falling back to capturing the whole desktop.
+
 This measures software input dispatch to the observed response picture, including
 sampling overhead. It does **not** measure physical key-to-photon latency or just
 network RTT. Sharing, remote input and the host's existing capture permission
 must already be enabled. Numeric sample durations and fixed completion codes
 use the existing bounded local diagnostic log and ZIP export; marker images,
 typed text and addresses are not saved.
+
+Design references: [MoonlightWeb's frame-driven latency probe](https://github.com/linckosz/moonlight-web/blob/3733ce3d30ea5b269030a9099ee085ed78624a0f/frontend/js/stream/LatencyProbe.js)
+for frame-triggered sampling and phase jitter, and [Qt's native-window sampling contract](https://doc.qt.io/qt-6/qscreen.html#grabWindow)
+for device-independent coordinates and capture limitations. These are software
+measurements, not guarantees about display scanout.
 
 ## What is recorded
 

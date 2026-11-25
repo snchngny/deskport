@@ -10,6 +10,8 @@ class QImage;
 struct VideoPresentationCallbacks {
     std::function<void()> frameReady;
     std::function<void()> firstFrame;
+    // Reports renderer submission, not physical display scanout.
+    std::function<void()> frameSubmitted;
     std::function<void()> resetRequired;
     // Runs on the snapshot worker; each presentation owns its own picture.
     std::function<void(QImage)> snapshotReady;

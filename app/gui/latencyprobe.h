@@ -19,11 +19,13 @@ public:
     void arm();
     bool select(QPoint point);
     void cancel();
+    void frameReady() { m_FramePending=true; if(m_State==Waiting && !m_Sampling) tick(); }
     bool busy() const { return m_State != Idle; }
     bool selecting() const { return m_State == Selecting; }
     static bool marker(const QImage& image, QPoint* center, bool* white, bool requireReady = true);
 signals:
     void finished(QJsonObject result);
+    void activityChanged(bool active);
 private:
     enum State { Idle, Selecting, Settle, Waiting, Cooldown };
     void tick();
@@ -38,6 +40,10 @@ private:
     State m_State = Idle;
     QPoint m_Point;
     bool m_White = false;
+    bool m_Sampling = false;
+    bool m_FramePending = false;
+    quint64 m_Epoch = 0;
+    int m_CooldownMs = 250;
     QList<qint64> m_Samples;
 };
 
