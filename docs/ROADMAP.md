@@ -1,3 +1,15 @@
+## In-app input-to-response measurement — 2026-11-25
+
+An explicit diagnostic marker and viewer measurement now use the existing
+session input adapter and bounded reads of the application's own picture. They
+request no Terminal or OS input-injection permissions. Four fiducials are checked
+before input; twelve responses discard two warm-ups. Session changes, resize,
+focus loss, unsupported capture and timeouts cancel instead of producing an
+accepted measurement. Fixed status codes and integer sample durations use the
+existing diagnostic sink. This is software response time, not physical
+key-to-photon latency. Hardware acceptance on Intel Big Sur and Windows remains
+required after packaging; synthetic unit tests are not live-input acceptance.
+
 ## Duplicate host identity selection — 2026-11-24
 
 The reverse preparation failure was isolated on hardware to two approved peer

@@ -28,7 +28,8 @@ bool validFailure(const QString& stage, const QString& code) {
 }
 const QStringList runtimeBackends {"kwin", "portal", "wlr", "screen-capture-kit", "vaapi", "videotoolbox", "software", "nvenc", "amdvce", "quicksync"};
 const QStringList navigationStages {"devices-request", "devices-ready", "devices-frame", "event-loop-delay"};
-const QStringList events {"failure","runtime","navigation","started", "stopped", "failed", "timeout", "connection", "display", "encoder", "decoder", "input", "capture", "recovery", "permission", "resize", "enabled", "network", "rate", "encoded"};
+const QStringList latencyStages {"sample", "completed", "cancelled", "marker-missing", "timeout", "capture-unavailable"};
+const QStringList events {"failure","runtime","navigation","started", "stopped", "failed", "timeout", "connection", "display", "encoder", "decoder", "input", "capture", "recovery", "permission", "resize", "enabled", "network", "rate", "encoded", "response-latency"};
 // Integer measurements only; each record type keeps its own fixed key set.
 const QStringList networkKeys {"rtt_ms", "rtt_var_ms", "received_fps", "rendered_fps", "network_drop_permille", "pacer_drop_permille", "received_kbps"};
 const QStringList rateKeys {"target_kbps", "rtt_ms", "baseline_ms", "ceiling_kbps", "floor_kbps", "resume_kbps"};
@@ -183,6 +184,14 @@ QJsonObject Diagnostics::project(const QString& message) {
             {"width",match.captured(3).toInt()},{"height",match.captured(4).toInt()}};
     }
     static const QRegularExpression navigation("DeskPort navigation stage=([a-z-]+) duration_ms=([0-9]{1,10})\\s*$");
+    static const QRegularExpression latency("DeskPort response-latency stage=([a-z-]+) trial=([0-9]{1,2}) duration_us=([0-9]{1,7})\\s*$");
+    if (message.contains("DeskPort response-latency")) {
+        const auto measurement=latency.match(message);
+        if (!measurement.hasMatch() || !latencyStages.contains(measurement.captured(1)) ||
+            measurement.captured(2).toInt()>12 || measurement.captured(3).toInt()>3000000) return {};
+        return {{"event","response-latency"},{"stage",measurement.captured(1)},
+            {"trial",measurement.captured(2).toInt()},{"duration_us",measurement.captured(3).toInt()}};
+    }
     match = navigation.match(message);
     if (match.hasMatch() && navigationStages.contains(match.captured(1)))
         return {{"event", "navigation"}, {"stage", match.captured(1)}, {"duration_ms", match.captured(2).toDouble()}};
@@ -302,6 +311,16 @@ QJsonObject Diagnostics::validate(const QJsonObject& o) {
         result["codec"] = o.value("codec"); result["video_format"] = format; result["fps"] = fps;
     }
     if (!result.contains("elapsed_ms")) return {};
+    if (o.value("event")=="response-latency") {
+        if (!latencyStages.contains(o.value("stage").toString())) return {};
+        for (const auto& name : {"trial","duration_us"}) {
+            const auto value=o.value(QLatin1String(name));
+            const int limit=QString::fromLatin1(name)=="trial" ? 12 : 3000000;
+            if(!value.isDouble() || value.toDouble()<0 || value.toDouble()>limit || value.toDouble()!=value.toInt()) return {};
+            result[QLatin1String(name)]=value;
+        }
+        result["stage"]=o.value("stage");
+    }
     if (stages.contains(o.value("stage").toString()) ||
         (o.value("event") == "navigation" && navigationStages.contains(o.value("stage").toString()))) result["stage"]=o.value("stage");
     if (o.value("event") == "failure") {

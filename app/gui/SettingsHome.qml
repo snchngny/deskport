@@ -138,6 +138,20 @@ UiPage {
             onClicked: diagnostics.showLogs()
         }
         UiRow {
+            objectName: "openLatencyMarker"
+            visible: typeof latencyTools !== "undefined"
+            iconSource: "qrc:/res/ui/diagnostics.svg"
+            title: qsTr("Open response latency marker")
+            onClicked: latencyTools.showMarker()
+        }
+        UiRow {
+            objectName: "measureResponseLatency"
+            visible: typeof latencyTools !== "undefined"
+            iconSource: "qrc:/res/ui/diagnostics.svg"
+            title: qsTr("Measure input to response picture")
+            onClicked: latencyTools.measure()
+        }
+        UiRow {
             objectName: "saveDiagnosticsZip"
             iconSource: "qrc:/res/ui/clipboard.svg"
             title: qsTr("Save logs as ZIP")

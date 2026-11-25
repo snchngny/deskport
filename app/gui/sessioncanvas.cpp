@@ -4,6 +4,8 @@
 #include <QInputMethod>
 #include <QGuiApplication>
 #include "sessioncanvas.h"
+#include "latencyprobe.h"
+#include <QScreen>
 #include "canvaskey.h"
 #include "backend/shortcutbinding.h"
 #include <QQuickWindow>
@@ -133,6 +135,30 @@ int button(Qt::MouseButton value) {
 }
 }
 SessionCanvas::SessionCanvas(QQuickItem* parent) : QQuickItem(parent), m_Inhibitor(this) {
+    m_LatencyProbe = new LatencyProbe(
+        [this](QRect region) {
+            if (!m_Surface || !m_Surface->screen() || !QRect(QPoint(),m_Surface->size()).contains(region)) return QImage();
+            return m_Surface->screen()->grabWindow(m_Surface->winId(),region.x(),region.y(),region.width(),region.height()).toImage();
+        },
+        [this](QPoint point) {
+            QMouseEvent down(QEvent::MouseButtonPress,QPointF(point),QPointF(point),Qt::LeftButton,Qt::LeftButton,Qt::NoModifier);
+            QMouseEvent up(QEvent::MouseButtonRelease,QPointF(point),QPointF(point),Qt::LeftButton,Qt::NoButton,Qt::NoModifier);
+            mouse(&down,true,true); mouse(&up,false,true);
+        },
+        [this] {
+            QKeyEvent down(QEvent::KeyPress,Qt::Key_Return,Qt::NoModifier);
+            QKeyEvent up(QEvent::KeyRelease,Qt::Key_Return,Qt::NoModifier);
+            key(&down,true); key(&up,false);
+        },
+        [this] { return m_Surface && m_Surface->isVisible() && m_Presentation && m_Presentation->ready() &&
+            !m_TransitionWaiting && m_LastState.value("focused").toBool(); },this);
+    connect(&LatencyTools::instance(),&LatencyTools::probeRequested,this,[this] {
+        QTimer::singleShot(1000,this,[this] {
+            if (isVisible() && m_Presentation && m_Presentation->ready()) m_LatencyProbe->arm();
+            else LatencyTools::instance().report({{"status","no-active-session"}});
+        });
+    });
+    connect(m_LatencyProbe,&LatencyProbe::finished,&LatencyTools::instance(),&LatencyTools::report);
     setAcceptedMouseButtons(Qt::AllButtons); setAcceptHoverEvents(true);
     setAcceptTouchEvents(true);
     setActiveFocusOnTab(true);
@@ -224,6 +250,7 @@ SessionCanvas::~SessionCanvas() {
     delete m_Surface; m_Surface = nullptr;
 }
 void SessionCanvas::setPresentation(QObject* value) {
+    if (m_Presentation != value) m_LatencyProbe->cancel();
     auto presentation = qobject_cast<SessionPresentation*>(value);
     if (presentation == m_Presentation) return;
     m_ResizeTimer.stop();
@@ -239,6 +266,7 @@ void SessionCanvas::setPresentation(QObject* value) {
     emit presentationChanged(); emit frameReadyChanged(); refresh();
 }
 void SessionCanvas::geometryChange(const QRectF& next, const QRectF& previous) {
+    if (next != previous) m_LatencyProbe->cancel();
     QQuickItem::geometryChange(next, previous); refresh();
 }
 QVariant SessionCanvas::inputMethodQuery(Qt::InputMethodQuery query) const {
@@ -422,6 +450,7 @@ void SessionCanvas::key(QKeyEvent* event, bool down) {
     event->accept();
 }
 void SessionCanvas::keyPressEvent(QKeyEvent* event) {
+    if (m_LatencyProbe->busy()) { m_LatencyProbe->cancel(); event->accept(); return; }
     if (event->key() == Qt::Key_Escape && m_Presentation &&
         (!m_Presentation->ready() || property("transitionWaiting").toBool())) {
         event->accept(); emit transitionCancelRequested(); return;
@@ -450,8 +479,19 @@ void SessionCanvas::mouse(QMouseEvent* event, bool down, bool isButton) {
     else { value["dx"] = m_Mouse.x() - old.x(); value["dy"] = m_Mouse.y() - old.y(); }
     emit input(value); event->accept();
 }
-void SessionCanvas::mousePressEvent(QMouseEvent* event) { mouse(event, true, true); }
-void SessionCanvas::mouseReleaseEvent(QMouseEvent* event) { mouse(event, false, true); }
+void SessionCanvas::mousePressEvent(QMouseEvent* event) {
+    if(m_LatencyProbe->selecting()) { event->accept(); return; }
+    if(m_LatencyProbe->busy()) m_LatencyProbe->cancel();
+    mouse(event,true,true);
+}
+void SessionCanvas::mouseReleaseEvent(QMouseEvent* event) {
+    if(m_LatencyProbe->selecting()) {
+        if(event->button()!=Qt::LeftButton) { m_LatencyProbe->cancel(); event->accept(); return; }
+        forceActiveFocus(); m_Mouse=position(event->position()); m_Hovered=true; refresh();
+        m_LatencyProbe->select(m_Mouse); event->accept(); return;
+    }
+    mouse(event,false,true);
+}
 void SessionCanvas::mouseMoveEvent(QMouseEvent* event) { mouse(event, false, false); }
 void SessionCanvas::hoverEnterEvent(QHoverEvent* event) { m_Hovered = true; m_Mouse = position(event->position()); forceActiveFocus(); refresh(); }
 void SessionCanvas::hoverLeaveEvent(QHoverEvent*) { m_Hovered = false; refresh(); }

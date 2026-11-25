@@ -21,6 +21,7 @@ int runCanvasSelfTest(int argc, char** argv);
 #include "backend/browserhost.h"
 #include "backend/multisessions.h"
 #include "gui/sessioncanvas.h"
+#include "gui/latencyprobe.h"
 #include "backend/globalshortcut.h"
 #include "streaming/shortcutstate.h"
 #include "streaming/canvasbridge.h"
@@ -1162,6 +1163,7 @@ int main(int argc, char *argv[])
         }
         showDevices();
     };
+    QObject::connect(&LatencyTools::instance(), &LatencyTools::probeRequested, &app, recallViewer);
     QObject::connect(&hostManager, &HostManager::hideRequested, &app, [&] {
         WindowActivation::setPending({});
         if (managedSessions.busy()) managedSessions.showDevices();
@@ -1293,6 +1295,7 @@ int main(int argc, char *argv[])
     MacTitleBar macTitleBar;
 #endif
     engine.rootContext()->setContextProperty("diagnostics", &Diagnostics::instance());
+    engine.rootContext()->setContextProperty("latencyTools", &LatencyTools::instance());
     engine.rootContext()->setContextProperty("hostManager", &hostManager);
     engine.rootContext()->setContextProperty("browserHost", &browserHost);
     engine.rootContext()->setContextProperty("peerManager", &peerManager);

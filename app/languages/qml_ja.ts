@@ -2360,6 +2360,8 @@
             <source>To move or resize the window, turn this option off.</source>
             <translation>ウィンドウを移動したりサイズを変更したりするには、この設定をオフにしてください。</translation>
         </message>
+        <message><source>Open response latency marker</source><translation>応答遅延の目印を開く</translation></message>
+        <message><source>Measure input to response picture</source><translation>入力から応答映像までを測る</translation></message>
     </context>
     <context>
         <name>DeviceCard</name>
@@ -3934,5 +3936,22 @@
         <message><source>Download and update</source><translation>ダウンロードして更新</translation></message>
         <message><source>Download and reinstall latest</source><translation>最新版をダウンロードして再インストール</translation></message>
         <message><source>Downloads this fork's verified package, keeps settings and pairing, and restarts DeskPort. Mac updates reuse this computer's local signing key. The previous app is retained for rollback.</source><translation>検証済みの改造版を取得し、設定・ペアリングを保持して再起動します。Macは既存のローカル署名キーを再利用します。旧版は復旧用に残します。</translation></message>
+    </context>
+    <context>
+        <name>LatencyTools</name>
+        <message><source>DeskPort response latency marker</source><translation>DeskPort 応答遅延の目印</translation></message>
+        <message><source>On the receiving DeskPort, start a measurement and click the center of this marker.</source><translation>受信側のDeskPortで測定を開始し、この目印の中央をクリックしてください</translation></message>
+        <message><source>Display %1 (%2 × %3)</source><translation>画面 %1（%2 × %3）</translation></message>
+        <message><source>Response latency marker</source><translation>応答遅延の目印</translation></message>
+        <message><source>Display to test</source><translation>測定する共有画面</translation></message>
+        <message><source>Response latency</source><translation>応答遅延</translation></message>
+        <message><source>Open the DeskPort marker on the shared display first. After closing this message, click its center in the remote picture. Twelve Return presses will be sent only after the marker is recognized; the first two are warm-ups. Escape or changing focus cancels the test. No extra OS permissions are requested.</source><translation>共有側のDeskPortで目印を開いてください。この説明を閉じ、受信映像にある目印の中央をクリックすると測定します。目印を確認した後だけReturnを12回送り、最初の2回は集計から除きます。Escまたは別の画面への移動で中止します。OSの追加許可は求めません</translation></message>
+        <message><source>Input to response picture: median %1 ms (min %2, max %3), 10 samples.</source><translation>入力から応答映像まで：中央値 %1 ms（最小 %2、最大 %3）、10回</translation></message>
+        <message><source>The marker was not recognized. Open it on the shared display and click its center. No latency result was accepted.</source><translation>目印を確認できませんでした。共有画面に目印を開き、中央をクリックしてください。測定値は採用していません</translation></message>
+        <message><source>This display backend could not read DeskPort's own picture. No extra permissions were requested and no latency result was accepted.</source><translation>現在の表示方式ではDeskPort自身の映像を取得できませんでした。追加許可は要求しておらず、測定値は採用していません</translation></message>
+        <message><source>Connect to a remote desktop before starting a measurement.</source><translation>リモートデスクトップに接続してから測定してください</translation></message>
+        <message><source>No marker response arrived before the time limit. Check that remote input is enabled and the marker is in front.</source><translation>時間内に目印の応答を確認できませんでした。遠隔入力がオンで、目印が前面にあることを確認してください</translation></message>
+        <message><source>Measurement cancelled. Keep the same desktop and window focused until it finishes.</source><translation>測定を中止しました。測定中は同じデスクトップとウィンドウを前面に保ってください</translation></message>
+        <message><source>Includes software sampling overhead. This is not physical key-to-photon latency or network RTT. Numeric samples are recorded in the existing local diagnostic logs when enabled.</source><translation>映像の取得・確認処理の時間も含みます。実際のキー押下から液晶発光までの時間や、ネットワークだけの往復時間とは異なります。ログがオンの場合、数値は既存のローカル診断ログに保存します</translation></message>
     </context>
 </TS>

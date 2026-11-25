@@ -47,3 +47,7 @@ jobs:
         env:
           DESKPORT_QMAKE: qmake6
         run: python3 tests/test-diagnostics.py
+      - name: Response measurement marker, cancellation and warmups
+        env:
+          DESKPORT_QMAKE: qmake6
+        run: python3 tests/test-latency-probe.py

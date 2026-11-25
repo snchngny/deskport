@@ -6,13 +6,38 @@ and the host/helper processes it starts. It does not change independently manage
 Sunshine installations or the private mobile clients.
 
 In **Settings → Diagnostics and feedback**, check that **Enable diagnostic logs** is on,
-reproduce the problem, then select **Create logs ZIP and open GitHub…**. This
-creates a local ZIP and opens a prefilled issue at `keithxc/deskport`. Review the
+reproduce the problem, then select **Save logs as ZIP**. **Open logs folder**
+opens the existing local records; **Report a problem** is a separate action.
+Review the
 archive, drag it into the issue editor, describe the steps and expected behavior,
 and submit it yourself. GitHub issues and their attachments are **public**.
 DeskPort never uploads the archive, places its contents in a URL, submits an issue,
 or claims that the attachment has already been added. If the browser cannot open,
 the saved archive remains available and the UI shows manual instructions.
+
+## Input-to-response measurement
+
+On the sharing computer, choose **Settings → Diagnostics and feedback → Open
+response latency marker** and select the shared display. On the receiving
+computer, connect to that display, choose **Measure input to response picture**,
+close the instructions, and click the center of the colored marker in the remote
+picture. The viewer returns to the connected desktop automatically.
+
+DeskPort checks the marker's four colored fiducials before forwarding a click
+and twelve Return presses through the existing session input path. It discards
+two warm-ups and reports the median and range of ten responses. It samples only
+its own viewer window, uses no OS input injection, and does not request Terminal
+accessibility or screen-recording permission. An unsupported capture backend,
+unrecognized marker, missing response, changed session, resize or focus loss
+ends the test without accepting a result. Escape cancels it. Do not change the
+selected desktop during a measurement. The marker closes after ten minutes.
+
+This measures software input dispatch to the observed response picture, including
+sampling overhead. It does **not** measure physical key-to-photon latency or just
+network RTT. Sharing, remote input and the host's existing capture permission
+must already be enabled. Numeric sample durations and fixed completion codes
+use the existing bounded local diagnostic log and ZIP export; marker images,
+typed text and addresses are not saved.
 
 ## What is recorded
 

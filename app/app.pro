@@ -1,5 +1,7 @@
 HEADERS += backend/inputtestprofile.h
 SOURCES += gui/canvasselftest.cpp
+SOURCES += gui/latencyprobe.cpp
+HEADERS += gui/latencyprobe.h
 SOURCES += gui/canvaspointer.cpp
 HEADERS += gui/canvaspointer.h
 HEADERS += gui/canvaskey.h

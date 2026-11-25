@@ -15,6 +15,28 @@ public:
 public slots:
     void captureUrl(const QUrl& url) { opened=url; }
 private slots:
+    void boundedResponseLatencyLogs() {
+        auto event=Diagnostics::project("DeskPort response-latency stage=sample trial=12 duration_us=193456");
+        QCOMPARE(event["event"].toString(),QString("response-latency"));
+        event["source"]="client"; event["run"]=QString(32,'a'); event["elapsed_ms"]=1;event["secret"]="PRIVATE";
+        auto safe=Diagnostics::validate(event);
+        QCOMPARE(safe["duration_us"].toInt(),193456); QVERIFY(!safe.contains("secret"));
+        event["stage"]="private-host"; QVERIFY(Diagnostics::validate(event).isEmpty());
+        QVERIFY(Diagnostics::project("DeskPort response-latency stage=sample trial=13 duration_us=1").isEmpty());
+        QVERIFY(Diagnostics::project("DeskPort response-latency stage=sample trial=1 duration_us=9999999").isEmpty());
+        QVERIFY(Diagnostics::project("DeskPort response-latency stage=sample trial=1 duration_us=1 PRIVATE").isEmpty());
+        QTemporaryDir folder;
+        QVERIFY(folder.isValid());
+        Diagnostics logs(nullptr,folder.path()); logs.setEnabled(true);
+        logs.record("client","DeskPort response-latency stage=sample trial=3 duration_us=193456");
+        QFile file(folder.filePath("client-0.jsonl")); QVERIFY(file.open(QIODevice::ReadOnly));
+        int measurements=0;
+        for(const auto& line:file.readAll().split('\n')) {
+            const auto record=QJsonDocument::fromJson(line).object();
+            if(record["event"]=="response-latency") { ++measurements; QCOMPARE(record["duration_us"].toInt(),193456); }
+        }
+        QCOMPARE(measurements,1);
+    }
     void initTestCase() {
         QCoreApplication::setApplicationVersion(qEnvironmentVariable("TEST_DESKPORT_VERSION", "development"));
         QSettings::setDefaultFormat(QSettings::IniFormat);
@@ -372,6 +394,8 @@ private slots:
         QVERIFY(!QFile::exists(old.fileName()));
         const auto root=qEnvironmentVariable("TEST_DIAGNOSTICS_ROOT"); QFile::remove(root+"/verified.zip"); QVERIFY(QFile::copy(path,root+"/verified.zip"));
         QVERIFY(bytes.contains("viewer-0-client-0.jsonl"));
+        // Windows cannot remove an archive still held open by this test.
+        archive.close();
         logs.clear(); QVERIFY(!QFile::exists(viewer+"/client-0.jsonl")); QVERIFY(QFile::exists(privateFile.fileName())); QVERIFY(!QFile::exists(path)); QVERIFY(QFile::exists(secret.fileName()));
     }
     void connectionCodesAndExportFailure() {

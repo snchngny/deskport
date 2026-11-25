@@ -46,6 +46,7 @@ TARGET = diagnostics-test
             'rtt_var_ms', 'received_fps', 'rendered_fps', 'network_drop_permille',
             'pacer_drop_permille', 'received_kbps', 'path',
             'encoded_kbps', 'frames', 'keyframes', 'max_frame_bytes',
+            'trial', 'duration_us',
         }
         for name in archive.namelist():
             if name.endswith('.jsonl'):

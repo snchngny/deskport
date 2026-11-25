@@ -10,6 +10,7 @@
 #include "backend/shortcutrecorderinhibitor.h"
 
 class CanvasTransitionCover;
+class LatencyProbe;
 
 class SessionCanvas : public QQuickItem {
     Q_OBJECT
@@ -77,6 +78,7 @@ private:
     ShortcutRecorderInhibitor m_Inhibitor;
     std::unique_ptr<CanvasPointer> m_Pointer;
     bool m_RelativePointer = false;
+    LatencyProbe* m_LatencyProbe = nullptr;
     QJsonObject m_PointerRegion;
     QPointF m_RelativeRemainder;
     struct Touch { int slot; QPointF position; };
